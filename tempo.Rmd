@@ -1,0 +1,76 @@
+---
+title: "tempo"
+author: "bosse"
+date: "8/9/2021"
+output: html_document
+---
+
+```{r setup, include=FALSE}
+knitr::opts_chunk$set(echo = TRUE)
+```
+
+## tempo
+
+This is an R Markdown document. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
+
+When you click the **Knit** button to generate the document.
+
+### Environment varaibles
+
+For this to work, these needs to be set in **$HOME/.Renviron**
+
+```{r environment, echo = TRUE}
+TEMPO_KEY <- Sys.getenv("TEMPO_KEY")
+TEMPO_START <- Sys.getenv("TEMPO_START")
+```
+
+where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo
+
+```{r libraries, echo = FALSE}
+library(tidyverse)
+library(httr)
+library(jsonlite)
+```
+
+```{r fetch-data, echo = FALSE}
+TEMPO_QUERY = paste0("worklogs?from=", TEMPO_START, "&to=", Sys.Date())
+TEMPO_URL = "https://api.tempo.io/core/3/"
+url = paste0(TEMPO_URL, TEMPO_QUERY)
+header = paste0("Bearer ", TEMPO_KEY)
+httpResponse <- GET(url, add_headers("Authorization" = header), accept_json())
+
+results = fromJSON(content(httpResponse, "text"))
+```
+
+```{r create-data, echo = FALSE}
+tempo.data <- results$results
+
+tempo.data <- tempo.data %>%
+  mutate(
+    user = author$displayName,
+    hours = timeSpentSeconds/(60*60),
+    billable = billableSeconds/(60*60),
+    date = as.Date(startDate)
+  )
+
+# str(tempo.data)
+
+user.data <- tempo.data %>%
+  group_by(date, user) %>%
+  summarise(
+    hours = sum(hours),
+    billable = sum(billable)
+  )
+
+# str(user.data)
+```
+
+```{r temp, echo = FALSE}
+tempo <- ggplot(data = user.data) +
+  geom_col(aes(x = date, y = hours, fill = user)) +
+  geom_step(aes(x = date, y = billable))
+```
+
+```{r plot, echo = FALSE}
+plot(tempo)
+```
