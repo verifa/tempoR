@@ -15,18 +15,43 @@ This is an R Markdown document. For more details on using R Markdown see <http:/
 
 When you click the **Knit** button to generate the document.
 
-### Environment varaibles
+```{r functions, echo = TRUE}
+check.if.empty <- function(var, name) {
+  if (var == "") {
+    stop.message <- paste(name, "is not defined")
+    stop(stop.message)
+  }
+}
+
+check.packages <- function(package.list) {
+  for (package in package.list) {
+    tryCatch(find.package(package),
+      error = function(e) {
+        print(paste("Please install", package, "for this to work"))
+      }
+    )
+  }  
+}
+```
+
+### Environment variables
 
 For this to work, these needs to be set in **$HOME/.Renviron**
 
 ```{r environment, echo = TRUE}
 TEMPO_KEY <- Sys.getenv("TEMPO_KEY")
+check.if.empty(TEMPO_KEY, "TEMPO_KEY")
 TEMPO_START <- Sys.getenv("TEMPO_START")
+check.if.empty(TEMPO_START, "TEMPO_START")
 ```
 
 where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo
 
 ```{r libraries, echo = FALSE}
+
+packages <- c("tidyverse", "jsonlite", "httr")
+check.packages(packages)
+
 library(tidyverse)
 library(httr)
 library(jsonlite)
@@ -42,7 +67,7 @@ httpResponse <- GET(url, add_headers("Authorization" = header), accept_json())
 results = fromJSON(content(httpResponse, "text"))
 ```
 
-```{r create-data, echo = FALSE}
+```{r aggregate-data, echo = FALSE}
 tempo.data <- results$results
 
 tempo.data <- tempo.data %>%
