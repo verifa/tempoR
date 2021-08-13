@@ -15,7 +15,7 @@ This is an R Markdown document. For more details on using R Markdown see <http:/
 
 When you click the **Knit** button to generate the document.
 
-```{r functions, echo = TRUE}
+```{r functions, echo = FALSE}
 check.if.empty <- function(var, name) {
   if (var == "") {
     stop.message <- paste(name, "is not defined")
@@ -47,7 +47,7 @@ check.if.empty(TEMPO_START, "TEMPO_START")
 
 where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo
 
-```{r libraries, echo = FALSE}
+```{r libraries, echo = FALSE, warning = FALSE, message = FALSE}
 
 packages <- c("tidyverse", "jsonlite", "httr", "stringr")
 check.packages(packages)
@@ -58,7 +58,7 @@ library(jsonlite)
 library(stringr)
 ```
 
-```{r fetch-data, echo = FALSE}
+```{r fetch-data, echo = FALSE, message = FALSE}
 TEMPO_QUERY = paste0("worklogs?from=", TEMPO_START, "&to=", Sys.Date())
 TEMPO_URL = "https://api.tempo.io/core/3/"
 url = paste0(TEMPO_URL, TEMPO_QUERY)
@@ -66,9 +66,19 @@ header = paste0("Bearer ", TEMPO_KEY)
 httpResponse <- GET(url, add_headers("Authorization" = header), accept_json())
 
 results = fromJSON(content(httpResponse, "text"))
+
+# working days
+WD_URL = "http://api.arbetsdag.se/v1/dagar.json"
+WD_KEY = "36995a30eb42c258b39ed90907281f2d4e4b5be5"
+WD_QUERY = paste0("?fran=", TEMPO_START, "&till=idag&key=", WD_KEY, "&id=1234")
+url = paste0(WD_URL, WD_QUERY)
+
+WD <- fromJSON(url)
+
+#str(WD)
 ```
 
-```{r aggregate-data, echo = FALSE}
+```{r aggregate-data, echo = FALSE, message = FALSE}
 tempo.data <- results$results
 
 tempo.data <- tempo.data %>%
@@ -110,13 +120,29 @@ colnames(user.summary) <- c("date", "user", "hours", "billable")
 ```{r tempo, echo = FALSE}
 tempo <- ggplot(data = user.data) +
   geom_col(aes(x = date, y = hours, fill = key)) +
-  facet_wrap(~user) + scale_fill_hue(l = 45)
+  facet_wrap(~user) + scale_fill_hue(l = 45) +
+  theme(legend.position = "top", legend.title = element_blank())
 ```
 
 ```{r accumulated, echo = FALSE}
+target <- WD$antal_arbetsdagar * 8
+delta <- max(user.summary$hours) - target
+
+
 accumulated <- ggplot(data = user.summary) +
-  geom_step(aes(x = date, y = hours), color = "Blue") +
-  geom_point(aes(x = date, y = hours), color = "Blue") +
+  annotate("segment", 
+           x = as.Date(TEMPO_START), 
+           xend = Sys.Date(), 
+           y = 0, 
+           yend = target, 
+           colour = "dark grey") +
+  annotate("text", 
+           x = as.Date(TEMPO_START) + 5, 
+           y = target * 0.75, 
+           label = paste("Delta:", delta), 
+           color = "Dark Blue") +
+  geom_step(aes(x = date, y = hours), color = "Dark Blue") +
+  geom_point(aes(x = date, y = hours), color = "Dark Blue") +
   geom_step(aes(x = date, y = billable), color = "Dark Green") +
   facet_wrap(~user) + scale_color_hue(l = 45)
 ```
