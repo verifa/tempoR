@@ -49,12 +49,13 @@ where TEMPO_KEY is the api key and TEMPO_START is the date you started using tem
 
 ```{r libraries, echo = FALSE}
 
-packages <- c("tidyverse", "jsonlite", "httr")
+packages <- c("tidyverse", "jsonlite", "httr", "stringr")
 check.packages(packages)
 
 library(tidyverse)
 library(httr)
 library(jsonlite)
+library(stringr)
 ```
 
 ```{r fetch-data, echo = FALSE}
@@ -75,27 +76,53 @@ tempo.data <- tempo.data %>%
     user = author$displayName,
     hours = timeSpentSeconds/(60*60),
     billable = billableSeconds/(60*60),
-    date = as.Date(startDate)
+    date = as.Date(startDate),
+    key = str_replace(issue$key, "-.*", "")
   )
 
 # str(tempo.data)
 
 user.data <- tempo.data %>%
-  group_by(date, user) %>%
+  group_by(date, user, key) %>%
   summarise(
     hours = sum(hours),
     billable = sum(billable)
   )
 
-# str(user.data)
+test <- tempo.data %>%
+  group_by(date, user) %>%
+  summarise(
+    hours = sum(hours),
+    billable = sum(billable)
+  ) 
+
+# mutate do not work..... so workaround
+user.summary <- bind_cols(test$date, 
+                          test$user, 
+                          cumsum(test$hours),
+                          cumsum(test$billable))
+colnames(user.summary) <- c("date", "user", "hours", "billable")
+
+# str(test)
+
 ```
 
-```{r temp, echo = FALSE}
+```{r tempo, echo = FALSE}
 tempo <- ggplot(data = user.data) +
-  geom_col(aes(x = date, y = hours, fill = user)) +
-  geom_step(aes(x = date, y = billable))
+  geom_col(aes(x = date, y = hours, fill = key)) +
+  facet_wrap(~user) + scale_fill_hue(l = 45)
+```
+
+```{r accumulated, echo = FALSE}
+accumulated <- ggplot(data = user.summary) +
+  geom_step(aes(x = date, y = hours), color = "Blue") +
+  geom_point(aes(x = date, y = hours), color = "Blue") +
+  geom_step(aes(x = date, y = billable), color = "Dark Green") +
+  facet_wrap(~user) + scale_color_hue(l = 45)
 ```
 
 ```{r plot, echo = FALSE}
 plot(tempo)
+
+plot(accumulated)
 ```
