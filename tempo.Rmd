@@ -67,10 +67,12 @@ httpResponse <- GET(url, add_headers("Authorization" = header), accept_json())
 
 results = fromJSON(content(httpResponse, "text"))
 
+TEMPO_END <- max(results$results$startDate)
+
 # working days
 WD_URL = "http://api.arbetsdag.se/v1/dagar.json"
 WD_KEY = "36995a30eb42c258b39ed90907281f2d4e4b5be5"
-WD_QUERY = paste0("?fran=", TEMPO_START, "&till=idag&key=", WD_KEY, "&id=1234")
+WD_QUERY = paste0("?fran=", TEMPO_START, "&till=", TEMPO_END, "&key=", WD_KEY, "&id=1234")
 url = paste0(WD_URL, WD_QUERY)
 
 WD <- fromJSON(url)
@@ -132,7 +134,7 @@ delta <- max(user.summary$hours) - target
 accumulated <- ggplot(data = user.summary) +
   annotate("segment", 
            x = as.Date(TEMPO_START), 
-           xend = Sys.Date(), 
+           xend = as.Date(TEMPO_END), 
            y = 0, 
            yend = target, 
            colour = "dark grey") +
@@ -141,9 +143,10 @@ accumulated <- ggplot(data = user.summary) +
            y = target * 0.75, 
            label = paste("Delta:", delta), 
            color = "Dark Blue") +
-  geom_step(aes(x = date, y = hours), color = "Dark Blue") +
   geom_point(aes(x = date, y = hours), color = "Dark Blue") +
-  geom_step(aes(x = date, y = billable), color = "Dark Green") +
+  geom_smooth(aes(x = date, y = hours), color = "Dark Blue") +
+  geom_point(aes(x = date, y = billable), color = "Dark Green") +
+  geom_smooth(aes(x = date, y = billable), color = "Dark Green") +
   facet_wrap(~user) + scale_color_hue(l = 45)
 ```
 
