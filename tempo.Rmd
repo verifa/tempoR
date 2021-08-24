@@ -49,13 +49,15 @@ where TEMPO_KEY is the api key and TEMPO_START is the date you started using tem
 
 ```{r libraries, echo = FALSE, warning = FALSE, message = FALSE}
 
-packages <- c("tidyverse", "jsonlite", "httr", "stringr")
+packages <- c("tidyverse", "jsonlite", "httr", "stringr", "slider", "lubridate")
 check.packages(packages)
 
 library(tidyverse)
 library(httr)
 library(jsonlite)
 library(stringr)
+library(slider)
+library(lubridate)
 ```
 
 ```{r fetch-data, echo = FALSE, message = FALSE}
@@ -110,7 +112,9 @@ user.summary <- tempo.data %>%
   group_by(user) %>%
   mutate(
     cumulative.hours = cumsum(hours),
-    cumulative.billable = cumsum(billable)
+    cumulative.billable = cumsum(billable),
+    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6)),
+    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6))
   )
 
 str(user.summary)
@@ -120,7 +124,13 @@ str(user.summary)
 ```{r tempo, echo = FALSE}
 tempo <- ggplot(data = user.data) +
   geom_col(aes(x = date, y = hours, fill = key)) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) +
+  geom_point(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray25") + 
+  geom_smooth(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray25") + 
+  geom_point(data = user.summary, aes(x = date, y = roll.7.billable/5), color = "Gray50") + 
+  geom_smooth(data = user.summary, aes(x = date, y = roll.7.billable/5), color = "Gray50") + 
+  facet_wrap(~user) + scale_fill_hue(l = 45) + 
+  scale_y_continuous(breaks = c(0,2,4,6,8,10), name = "Daily", 
+                     sec.axis = sec_axis(~ . * 5, name = "Weekly")) +
   theme(legend.position = "top", legend.title = element_blank())
 ```
 
@@ -140,11 +150,11 @@ accumulated <- ggplot(data = user.summary) +
            x = as.Date(TEMPO_START) + 5, 
            y = target * 0.75, 
            label = paste("Delta:", delta), 
-           color = "Dark Blue") +
-  geom_point(aes(x = date, y = cumulative.hours), color = "Dark Blue") +
-  geom_smooth(aes(x = date, y = cumulative.hours), color = "Dark Blue") +
-  geom_point(aes(x = date, y = cumulative.billable), color = "Dark Green") +
-  geom_smooth(aes(x = date, y = cumulative.billable), color = "Dark Green") +
+           color = "Gray25") +
+  geom_point(aes(x = date, y = cumulative.hours), color = "Gray25") +
+  geom_smooth(aes(x = date, y = cumulative.hours), color = "Gray25") +
+  geom_point(aes(x = date, y = cumulative.billable), color = "Gray50") +
+  geom_smooth(aes(x = date, y = cumulative.billable), color = "Gray50") +
   facet_wrap(~user) + scale_color_hue(l = 45)
 ```
 
