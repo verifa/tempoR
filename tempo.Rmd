@@ -63,7 +63,7 @@ TEMPO_QUERY = paste0("worklogs?from=", TEMPO_START, "&to=", Sys.Date())
 TEMPO_URL = "https://api.tempo.io/core/3/"
 url = paste0(TEMPO_URL, TEMPO_QUERY)
 header = paste0("Bearer ", TEMPO_KEY)
-httpResponse <- GET(url, add_headers("Authorization" = header), accept_json())
+httpResponse <- GET(url, add_headers("Authorization" = header), accept_json(), timeout(20))
 
 results = fromJSON(content(httpResponse, "text"))
 
@@ -101,21 +101,19 @@ user.data <- tempo.data %>%
     billable = sum(billable)
   )
 
-test <- tempo.data %>%
+user.summary <- tempo.data %>%
   group_by(date, user) %>%
   summarise(
     hours = sum(hours),
     billable = sum(billable)
-  ) 
+  ) %>%
+  group_by(user) %>%
+  mutate(
+    cumulative.hours = cumsum(hours),
+    cumulative.billable = cumsum(billable)
+  )
 
-# mutate do not work..... so workaround
-user.summary <- bind_cols(test$date, 
-                          test$user, 
-                          cumsum(test$hours),
-                          cumsum(test$billable))
-colnames(user.summary) <- c("date", "user", "hours", "billable")
-
-# str(test)
+str(user.summary)
 
 ```
 
@@ -128,7 +126,7 @@ tempo <- ggplot(data = user.data) +
 
 ```{r accumulated, echo = FALSE}
 target <- WD$antal_arbetsdagar * 8
-delta <- max(user.summary$hours) - target
+delta <- max(user.summary$cumulative.hours) - target
 
 
 accumulated <- ggplot(data = user.summary) +
@@ -143,10 +141,10 @@ accumulated <- ggplot(data = user.summary) +
            y = target * 0.75, 
            label = paste("Delta:", delta), 
            color = "Dark Blue") +
-  geom_point(aes(x = date, y = hours), color = "Dark Blue") +
-  geom_smooth(aes(x = date, y = hours), color = "Dark Blue") +
-  geom_point(aes(x = date, y = billable), color = "Dark Green") +
-  geom_smooth(aes(x = date, y = billable), color = "Dark Green") +
+  geom_point(aes(x = date, y = cumulative.hours), color = "Dark Blue") +
+  geom_smooth(aes(x = date, y = cumulative.hours), color = "Dark Blue") +
+  geom_point(aes(x = date, y = cumulative.billable), color = "Dark Green") +
+  geom_smooth(aes(x = date, y = cumulative.billable), color = "Dark Green") +
   facet_wrap(~user) + scale_color_hue(l = 45)
 ```
 
