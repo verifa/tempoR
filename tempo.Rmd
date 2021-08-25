@@ -113,8 +113,8 @@ user.summary <- tempo.data %>%
   mutate(
     cumulative.hours = cumsum(hours),
     cumulative.billable = cumsum(billable),
-    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6)),
-    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6))
+    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = TRUE),
+    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = TRUE)
   )
 
 str(user.summary)
