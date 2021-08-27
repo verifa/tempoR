@@ -82,7 +82,7 @@ WD <- fromJSON(url)
 #str(WD)
 ```
 
-```{r aggregate-data, echo = FALSE, message = FALSE}
+```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
 tempo.data <- results$results
 
 tempo.data <- tempo.data %>%
@@ -117,11 +117,11 @@ user.summary <- tempo.data %>%
     roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = TRUE)
   )
 
-str(user.summary)
+# str(user.summary)
 
 ```
 
-```{r tempo, echo = FALSE}
+```{r tempo, echo = FALSE, warning = FALSE, message = FALSE}
 tempo <- ggplot(data = user.data) +
   geom_col(aes(x = date, y = hours, fill = key)) +
   geom_point(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray25") + 
@@ -134,7 +134,19 @@ tempo <- ggplot(data = user.data) +
   theme(legend.position = "top", legend.title = element_blank())
 ```
 
-```{r accumulated, echo = FALSE}
+```{r rolling, echo = FALSE, warning = FALSE, message = FALSE}
+rolling <- ggplot(data = user.data) +
+  geom_point(data = user.summary, aes(x = date, y = roll.7.hours), color = "Gray25") + 
+  geom_smooth(data = user.summary, aes(x = date, y = roll.7.hours), color = "Gray25") + 
+  geom_point(data = user.summary, aes(x = date, y = roll.7.billable), color = "Gray50") + 
+  geom_smooth(data = user.summary, aes(x = date, y = roll.7.billable), color = "Gray50") + 
+  facet_wrap(~user) + scale_fill_hue(l = 45) + scale_color_hue(l = 45) +
+  scale_y_continuous(breaks = c(0,10,20,30,40,50), name = "Rolling Weekly [h]", 
+                     sec.axis = sec_axis(~ . * 2.5, breaks = c(0, 25, 50, 75), name = "Rolling Fraction [%] ")) +
+  theme(legend.position = "top", legend.title = element_blank())
+```
+
+```{r accumulated, echo = FALSE, warning = FALSE, message = FALSE}
 target <- WD$antal_arbetsdagar * 8
 delta <- max(user.summary$cumulative.hours) - target
 
@@ -158,8 +170,10 @@ accumulated <- ggplot(data = user.summary) +
   facet_wrap(~user) + scale_color_hue(l = 45)
 ```
 
-```{r plot, echo = FALSE}
+```{r plot, echo = FALSE, warning = FALSE, message = FALSE}
 plot(tempo)
+
+plot(rolling)
 
 plot(accumulated)
 ```
