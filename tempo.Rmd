@@ -53,6 +53,7 @@ packages <- c("tidyverse", "jsonlite", "httr", "stringr", "slider", "lubridate")
 check.packages(packages)
 
 library(tidyverse)
+library(dplyr)
 library(httr)
 library(jsonlite)
 library(stringr)
@@ -61,13 +62,31 @@ library(lubridate)
 ```
 
 ```{r fetch-data, echo = FALSE, message = FALSE}
-TEMPO_QUERY = paste0("worklogs?from=", TEMPO_START, "&to=", Sys.Date())
-TEMPO_URL = "https://api.tempo.io/core/3/"
-url = paste0(TEMPO_URL, TEMPO_QUERY)
-header = paste0("Bearer ", TEMPO_KEY)
-httpResponse <- GET(url, add_headers("Authorization" = header), accept_json(), timeout(20))
+offset <- 0
+count <- 100
+TEMPO_LIMIT <- count
 
-results = fromJSON(content(httpResponse, "text"))
+while (count == TEMPO_LIMIT) {
+  TEMPO_QUERY <- paste0("worklogs?from=", TEMPO_START, "&to=", Sys.Date(), "&offset=", offset, "&limit=", TEMPO_LIMIT)
+  TEMPO_URL <- "https://api.tempo.io/core/3/"
+  url <- paste0(TEMPO_URL, TEMPO_QUERY)
+  header <- paste0("Bearer ", TEMPO_KEY)
+  message(url)
+  httpResponse <- GET(url, add_headers("Authorization" = header), accept_json(), timeout(20))
+  
+  results <- fromJSON(content(httpResponse, "text"))
+  
+  print(rownames(results$results))
+  
+  count <- results$metadata$count
+  if (offset == 0) {
+    tempo.data <- results$results
+  } else {
+    tempo.data <- bind_rows(tempo.data, results$results)
+    
+  }
+  offset <- offset + TEMPO_LIMIT
+}
 
 TEMPO_END <- max(results$results$startDate)
 
@@ -83,7 +102,7 @@ WD <- fromJSON(url)
 ```
 
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
-tempo.data <- results$results
+# tempo.data <- results$results
 
 tempo.data <- tempo.data %>%
   mutate(
@@ -113,8 +132,8 @@ user.summary <- tempo.data %>%
   mutate(
     cumulative.hours = cumsum(hours),
     cumulative.billable = cumsum(billable),
-    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = TRUE),
-    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = TRUE)
+    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = FALSE),
+    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = FALSE)
   )
 
 # str(user.summary)
