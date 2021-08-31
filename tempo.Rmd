@@ -76,8 +76,6 @@ while (count == TEMPO_LIMIT) {
   
   results <- fromJSON(content(httpResponse, "text"))
   
-  print(rownames(results$results))
-  
   count <- results$metadata$count
   if (offset == 0) {
     tempo.data <- results$results
@@ -88,21 +86,29 @@ while (count == TEMPO_LIMIT) {
   offset <- offset + TEMPO_LIMIT
 }
 
-TEMPO_END <- max(results$results$startDate)
 
-# working days
-WD_URL = "http://api.arbetsdag.se/v1/dagar.json"
-WD_KEY = "36995a30eb42c258b39ed90907281f2d4e4b5be5"
-WD_QUERY = paste0("?fran=", TEMPO_START, "&till=", TEMPO_END, "&key=", WD_KEY, "&id=1234")
-url = paste0(WD_URL, WD_QUERY)
-
-WD <- fromJSON(url)
-
-#str(WD)
+workingdays <- function(begins, ends) {
+  #str(begins)
+  #str(ends)
+  #print(length(begins))
+  result <- c()
+  for (i in seq(length.out=length(begins))) {
+    # working days
+    WD_URL = "http://api.arbetsdag.se/v1/dagar.json"
+    WD_KEY = "36995a30eb42c258b39ed90907281f2d4e4b5be5"
+    WD_QUERY = paste0("?fran=", as.Date(begins[i]), "&till=", as.Date(ends[i]), "&key=", WD_KEY, "&id=1234")
+    url = paste0(WD_URL, WD_QUERY)
+    
+    WD <- fromJSON(url)
+    # str(WD)
+    result[i] <- WD$antal_arbetsdagar
+  }
+  # str(result)
+  return(result)
+  }
 ```
 
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
-# tempo.data <- results$results
 
 tempo.data <- tempo.data %>%
   mutate(
@@ -136,7 +142,19 @@ user.summary <- tempo.data %>%
     roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = FALSE)
   )
 
-# str(user.summary)
+user.delta <- tempo.data %>%
+  group_by(user) %>%
+  summarise(
+    start = min(startDate),
+    end = max(startDate),
+    hours = sum(hours),
+    billable = sum(billable),
+    fraction = 100 * billable / hours,
+    expected = 8 * workingdays(start, end), 
+    delta = hours - expected
+  )
+
+# str(user.delta)
 
 ```
 
@@ -166,33 +184,17 @@ rolling <- ggplot(data = user.data) +
 ```
 
 ```{r accumulated, echo = FALSE, warning = FALSE, message = FALSE}
-target <- WD$antal_arbetsdagar * 8
-delta <- max(user.summary$cumulative.hours) - target
-
-
-accumulated <- ggplot(data = user.summary) +
-  annotate("segment", 
-           x = as.Date(TEMPO_START), 
-           xend = as.Date(TEMPO_END), 
-           y = 0, 
-           yend = target, 
-           colour = "dark grey") +
-  annotate("text", 
-           x = as.Date(TEMPO_START) + 5, 
-           y = target * 0.75, 
-           label = paste("Delta:", delta), 
-           color = "Gray25") +
-  geom_point(aes(x = date, y = cumulative.hours), color = "Gray25") +
-  geom_smooth(aes(x = date, y = cumulative.hours), color = "Gray25") +
-  geom_point(aes(x = date, y = cumulative.billable), color = "Gray50") +
-  geom_smooth(aes(x = date, y = cumulative.billable), color = "Gray50") +
-  facet_wrap(~user) + scale_color_hue(l = 45)
+accumulated <- ggplot(data = user.delta) +
+  geom_col(aes(x = user, y = delta, fill = user)) +
+  scale_color_hue(l = 45)
 ```
 
 ```{r plot, echo = FALSE, warning = FALSE, message = FALSE}
 plot(tempo)
 
 plot(rolling)
+
+knitr::kable(user.delta, caption = "User summary")
 
 plot(accumulated)
 ```
