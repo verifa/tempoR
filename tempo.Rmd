@@ -138,8 +138,10 @@ user.summary <- tempo.data %>%
   mutate(
     cumulative.hours = cumsum(hours),
     cumulative.billable = cumsum(billable),
-    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = FALSE),
-    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = FALSE)
+    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = TRUE),
+    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = TRUE),
+    roll.30.hours = slide_index_dbl(roll.7.hours, date, mean, .before = days(29), .complete = TRUE),
+    roll.30.billable = slide_index_dbl(roll.7.billable, date, mean, .before = days(29), .complete = TRUE)
   )
 
 user.delta <- tempo.data %>%
@@ -161,32 +163,36 @@ user.delta <- tempo.data %>%
 ```{r tempo, echo = FALSE, warning = FALSE, message = FALSE}
 tempo <- ggplot(data = user.data) +
   geom_col(aes(x = date, y = hours, fill = key)) +
-  geom_point(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray25") + 
-  geom_smooth(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray25") + 
-  geom_point(data = user.summary, aes(x = date, y = roll.7.billable/5), color = "Gray50") + 
-  geom_smooth(data = user.summary, aes(x = date, y = roll.7.billable/5), color = "Gray50") + 
+  geom_point(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray15") + 
+  geom_point(data = user.summary, aes(x = date, y = roll.7.billable/5), color = "Gray35") + 
   facet_wrap(~user) + scale_fill_hue(l = 45) + 
   scale_y_continuous(breaks = c(0,2,4,6,8,10), name = "Daily", 
                      sec.axis = sec_axis(~ . * 5, name = "Weekly")) +
+  scale_x_date(name = NULL) +
   theme(legend.position = "top", legend.title = element_blank())
 ```
 
 ```{r rolling, echo = FALSE, warning = FALSE, message = FALSE}
-rolling <- ggplot(data = user.data) +
-  geom_point(data = user.summary, aes(x = date, y = roll.7.hours), color = "Gray25") + 
-  geom_smooth(data = user.summary, aes(x = date, y = roll.7.hours), color = "Gray25") + 
-  geom_point(data = user.summary, aes(x = date, y = roll.7.billable), color = "Gray50") + 
-  geom_smooth(data = user.summary, aes(x = date, y = roll.7.billable), color = "Gray50") + 
+rolling <- ggplot(data = user.summary) +
+  geom_point(aes(x = date, y = roll.7.hours), color = "Gray50") + 
+  geom_point(aes(x = date, y = roll.7.billable), color = "Gray75") + 
+  geom_point(aes(x = date, y = roll.30.hours), color = "Dark Blue") + 
+  geom_line(aes(x = date, y = roll.30.hours), color = "Dark Blue") + 
+  geom_point(aes(x = date, y = roll.30.billable), color = "Dark Green") + 
+  geom_line(aes(x = date, y = roll.30.billable), color = "Dark Green") + 
   facet_wrap(~user) + scale_fill_hue(l = 45) + scale_color_hue(l = 45) +
   scale_y_continuous(breaks = c(0,10,20,30,40,50), name = "Rolling Weekly [h]", 
                      sec.axis = sec_axis(~ . * 2.5, breaks = c(0, 25, 50, 75), name = "Rolling Fraction [%] ")) +
+  scale_x_date(name = NULL) +
   theme(legend.position = "top", legend.title = element_blank())
 ```
 
 ```{r accumulated, echo = FALSE, warning = FALSE, message = FALSE}
 accumulated <- ggplot(data = user.delta) +
-  geom_col(aes(x = user, y = delta, fill = user)) +
-  scale_color_hue(l = 45)
+  geom_col(aes(x = user, y = delta, fill = user), show.legend = FALSE) +
+  scale_fill_hue(l = 45) +
+  scale_x_discrete(name = NULL) +
+  scale_y_continuous(name = "Delta hours [h]")
 ```
 
 ```{r plot, echo = FALSE, warning = FALSE, message = FALSE}
