@@ -43,9 +43,11 @@ TEMPO_KEY <- Sys.getenv("TEMPO_KEY")
 check.if.empty(TEMPO_KEY, "TEMPO_KEY")
 TEMPO_START <- Sys.getenv("TEMPO_START")
 check.if.empty(TEMPO_START, "TEMPO_START")
+WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
+check.if.empty(WD_KEY, "WD_KEY")
 ```
 
-where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo
+where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo. WD_KEY is the api key for "arbetsdagar.se", you will have to register, at least, a free account to use the service.
 
 ```{r libraries, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -88,24 +90,18 @@ while (count == TEMPO_LIMIT) {
 
 
 workingdays <- function(begins, ends) {
-  #str(begins)
-  #str(ends)
-  #print(length(begins))
   result <- c()
   for (i in seq(length.out=length(begins))) {
     # working days
-    WD_URL = "http://api.arbetsdag.se/v1/dagar.json"
-    WD_KEY = "36995a30eb42c258b39ed90907281f2d4e4b5be5"
+    WD_URL = "http://api.arbetsdag.se/v2/dagar.json"
     WD_QUERY = paste0("?fran=", as.Date(begins[i]), "&till=", as.Date(ends[i]), "&key=", WD_KEY, "&id=1234")
     url = paste0(WD_URL, WD_QUERY)
     
     WD <- fromJSON(url)
-    # str(WD)
     result[i] <- WD$antal_arbetsdagar
   }
-  # str(result)
   return(result)
-  }
+}
 ```
 
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
