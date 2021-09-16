@@ -31,11 +31,28 @@ ARBETSDAGAR_KEY=<the created api key>
 
 ### Rstudio
 
-Open `tempoR.Rproj` in Rstudio and then open the `tempo.Rmd` file, the a *Knit* button appears that is used to generate the report `tempo.html' 
+Open `tempoR.Rproj` in Rstudio and then open the `tempo.Rmd` file, then a *Knit* button appears that is used to generate the report `tempo.html' 
+
 ### CLI
 
 There is a small `tempo.sh` script included that when executed will generate `tempo.html'
 
 ### docker
 
-[tempoR#15](https://github.com/verifa/tempoR/issues/15)
+**To run locally:**
+
+Build [verifa/rbase-metrics](rbase-metrics/Dockerfile) image:
+```
+$ cd rbase-metrics
+$ docker build -t verifa/rbase-metrics .
+```
+
+Build [verifa/tempor](Dockerfile) image:
+```
+$ docker build -t verifa/tempoR .
+```
+
+Make sure your .Rneviron is in your home directory and run:
+```
+$ docker run -v ~/.Renviron:/root/.Renviron -v [path to this repo on your machine]]:/code verifa/tempor
+```
