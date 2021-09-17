@@ -56,3 +56,7 @@ Make sure your .Rneviron is in your home directory and run:
 ```
 $ docker run -v ~/.Renviron:/root/.Renviron -v [path to this repo on your machine]]:/code verifa/tempor
 ```
+
+**Using the Makefile**
+
+Assuming docker and make are installed, generate the report using make, `tempo.html` is the default target, so all that is needed is `make`
