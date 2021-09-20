@@ -98,7 +98,7 @@ workingdays <- function(begins, ends) {
     url = paste0(WD_URL, WD_QUERY)
     
     WD <- fromJSON(url)
-    result[i] <- WD$antal_arbetsdagar
+    result[i] <- WD$antal_vardagar
   }
   return(result)
 }
