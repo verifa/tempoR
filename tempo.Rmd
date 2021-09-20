@@ -145,11 +145,11 @@ user.delta <- tempo.data %>%
   summarise(
     start = min(startDate),
     end = max(startDate),
-    hours = sum(hours),
-    billable = sum(billable),
-    fraction = 100 * billable / hours,
     expected = 8 * workingdays(start, end), 
-    delta = hours - expected
+    hours = sum(hours),
+    delta = hours - expected,
+    billable = sum(billable),
+    fraction = 100 * billable / expected
   )
 
 # str(user.delta)
