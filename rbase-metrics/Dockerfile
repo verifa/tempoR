@@ -23,3 +23,8 @@ COPY install_packages.R /packages/install_packages.R
 ## install R-packages
 RUN Rscript /packages/install_packages.R
 
+# prepare the workspace
+RUN mkdir -p /code
+
+## run the script
+CMD cd /code && Rscript  -e "rmarkdown::render('tempo.Rmd')"

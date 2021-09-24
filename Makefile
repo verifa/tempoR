@@ -9,10 +9,6 @@ default: tempo.html
 rbase-metrics:
 	cd $@ && docker build -t $(ORGANISATION)/$@ .
 
-.PHONY: tempor
-tempor: rbase-metrics
-	docker build -t $(ORGANISATION)/$@ .
-
 .PHONY: tempo.html
 tempo.html: tempor
 	@echo Generating $@ with $^
