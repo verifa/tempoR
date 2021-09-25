@@ -140,6 +140,22 @@ user.summary <- tempo.data %>%
     roll.30.billable = slide_index_dbl(roll.7.billable, date, mean, .before = days(29), .complete = TRUE)
   )
 
+#str(user.summary)
+
+team.summary <- user.summary %>%
+  group_by(date) %>%
+  summarise(
+    average.7.hours = mean(roll.7.hours, na.rm = TRUE),
+    sd.7.hours = sd(roll.7.hours, na.rm = TRUE),
+    average.30.hours = mean(roll.30.hours, na.rm = TRUE),
+    sd.30.hours = sd(roll.30.hours, na.rm = TRUE),
+    average.7.billable = mean(roll.7.billable, na.rm = TRUE),
+    sd.7.billable = sd(roll.7.billable, na.rm = TRUE),
+    average.30.billable = mean(roll.30.billable, na.rm = TRUE),
+    sd.30.billable = sd(roll.30.billable, na.rm = TRUE)
+  )
+# str(team.summary)
+
 user.delta <- tempo.data %>%
   group_by(user) %>%
   summarise(
@@ -156,29 +172,53 @@ user.delta <- tempo.data %>%
 
 ```
 
+
 ```{r tempo, echo = FALSE, warning = FALSE, message = FALSE}
 tempo <- ggplot(data = user.data) +
   geom_col(aes(x = date, y = hours, fill = key)) +
-  geom_point(data = user.summary, aes(x = date, y = roll.7.hours/5), color = "Gray15") + 
-  geom_point(data = user.summary, aes(x = date, y = roll.7.billable/5), color = "Gray35") + 
   facet_wrap(~user) + scale_fill_hue(l = 45) + 
-  scale_y_continuous(breaks = c(0,2,4,6,8,10), name = "Daily", 
-                     sec.axis = sec_axis(~ . * 5, name = "Weekly")) +
+  scale_y_continuous(
+    breaks = c(0,2,4,6,8,10), 
+    name = "Daily",
+    sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
   theme(legend.position = "top", legend.title = element_blank())
+```
+```{r team, echo = FALSE, warning = FALSE, message = FALSE}
+team <- ggplot(data = team.summary) +
+  geom_point(aes(x = date, y = average.7.hours), color = "Gray50", shape = 1) + 
+  geom_point(aes(x = date, y = average.30.hours), color = "Dark Blue") + 
+  geom_smooth(aes(x = date, y = average.30.hours), color = "Dark Blue") +
+  geom_point(aes(x = date, y = average.7.billable), color = "Gray75", shape = 1) + 
+  geom_point(aes(x = date, y = average.30.billable), color = "Dark Green") + 
+  geom_smooth(aes(x = date, y = average.30.billable), color = "Dark Green") +
+  scale_color_hue(l = 45) + scale_fill_hue(l = 45) +
+  scale_y_continuous(
+    breaks = c(0,8,16,24,32,40, 48,56), 
+    name = "Weekly", 
+    sec.axis = sec_axis(~ . * 2.5, 
+                        breaks = c(0, 20, 40, 60, 80, 100), 
+                        name = "Rolling Fraction [%] ")) +
+  scale_x_date(name = NULL) +
+  theme(legend.position = "top", legend.title = element_blank())
+
 ```
 
 ```{r rolling, echo = FALSE, warning = FALSE, message = FALSE}
 rolling <- ggplot(data = user.summary) +
-  geom_point(aes(x = date, y = roll.7.hours), color = "Gray50") + 
-  geom_point(aes(x = date, y = roll.7.billable), color = "Gray75") + 
+  geom_point(aes(x = date, y = roll.7.hours), color = "Gray50", shape = 1) + 
+  geom_point(aes(x = date, y = roll.7.billable), color = "Gray75", shape = 1) + 
   geom_point(aes(x = date, y = roll.30.hours), color = "Dark Blue") + 
   geom_line(aes(x = date, y = roll.30.hours), color = "Dark Blue") + 
   geom_point(aes(x = date, y = roll.30.billable), color = "Dark Green") + 
   geom_line(aes(x = date, y = roll.30.billable), color = "Dark Green") + 
   facet_wrap(~user) + scale_fill_hue(l = 45) + scale_color_hue(l = 45) +
-  scale_y_continuous(breaks = c(0,10,20,30,40,50), name = "Rolling Weekly [h]", 
-                     sec.axis = sec_axis(~ . * 2.5, breaks = c(0, 25, 50, 75), name = "Rolling Fraction [%] ")) +
+  scale_y_continuous(
+    breaks = c(0,8,16,24,32,40, 48), 
+    name = "Rolling Weekly [h]", 
+    sec.axis = sec_axis(~ . * 2.5, 
+                        breaks = c(0, 20, 40, 60, 80, 100), 
+                        name = "Rolling Fraction [%] ")) +
   scale_x_date(name = NULL) +
   theme(legend.position = "top", legend.title = element_blank())
 ```
@@ -188,15 +228,20 @@ accumulated <- ggplot(data = user.delta) +
   geom_col(aes(x = user, y = delta, fill = user), show.legend = FALSE) +
   scale_fill_hue(l = 45) +
   scale_x_discrete(name = NULL) +
-  scale_y_continuous(name = "Delta hours [h]")
+  scale_y_continuous(
+    name = "Delta hours [h]",
+    sec.axis = dup_axis())
 ```
 
 ```{r plot, echo = FALSE, warning = FALSE, message = FALSE}
-plot(tempo)
-
-plot(rolling)
-
 knitr::kable(user.delta, caption = "User summary")
 
 plot(accumulated)
+
+plot(team)
+
+plot(rolling)
+
+plot(tempo)
+
 ```
