@@ -43,6 +43,8 @@ TEMPO_KEY <- Sys.getenv("TEMPO_KEY")
 check.if.empty(TEMPO_KEY, "TEMPO_KEY")
 TEMPO_START <- Sys.getenv("TEMPO_START")
 check.if.empty(TEMPO_START, "TEMPO_START")
+TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
+# No checking for this, used to filter how much details are plotted
 WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
 check.if.empty(WD_KEY, "WD_KEY")
 ```
@@ -125,20 +127,6 @@ user.data <- aggregated.data %>%
     billable = sum(billable)
   )
 
-# detailed.data <- tempo.data %>%
-#   mutate(
-#     user = author$displayName,
-#     hours = timeSpentSeconds/(60*60),
-#     billable = billableSeconds/(60*60),
-#     date = as.Date(startDate),
-#     key = issue$key
-#   )
-# 
-# billable.data <- subset(detailed.data, billable > 0)
-# unbillable.data <- subset(detailed.data, billable == 0)
-
-# str(detailed.data)
-
 user.detail <- aggregated.data %>%
   group_by(user, issue.key) %>%
   summarise(
@@ -208,7 +196,7 @@ tempo <- ggplot(data = aggregated.data) +
   ggtitle("Daily logs")
 
 tempo.detailed <- ggplot(data = aggregated.data) +
-  geom_col(aes(x = date, y = hours, fill = issue.key)) +
+  geom_col(aes(x = date, y = hours, fill = issue.key), show.legend = FALSE) +
   facet_wrap(~user) + scale_fill_hue(l = 45) + 
   scale_y_continuous(
     breaks = c(0,2,4,6,8,10), 
@@ -223,20 +211,26 @@ tempo.billable <- ggplot(data = subset(user.detail, billable > 0)) +
   geom_point(aes(x = reorder(issue.key, -hours), 
                  y = hours, 
                  color = issue.key, 
-                 fill = issue.key,
-                 size = sqrt(hours))) +
+                 fill = issue.key), show.legend = FALSE) +
   facet_wrap(~user) + scale_fill_hue(l = 45) + 
-  scale_y_continuous(
+  scale_x_discrete(name = NULL) +
+  scale_y_log10(
+    name = "Logged hours [h]",
     sec.axis = dup_axis()) +
-  theme(legend.position = "top") +
+  theme(legend.position = "top", legend.title = element_blank()) +
   ggtitle("Billable tasks")
 
 #   geom_col(aes(x = reorder(issue.key, -hours), y = hours, fill = issue.key)) +
 
 tempo.unbillable <- ggplot(data = subset(user.detail, billable == 0)) +
-  geom_col(aes(x = reorder(issue.key, -hours), y = hours, fill = issue.key)) +
+  geom_point(aes(x = reorder(issue.key, -hours), 
+                 y = hours,
+                 color = issue.key,
+                 fill = issue.key), show.legend = FALSE) +
   facet_wrap(~user) + scale_fill_hue(l = 45) + 
-  scale_y_continuous(
+  scale_x_discrete(name = NULL) +
+  scale_y_log10(
+    name = "Logged hours [h]",
     sec.axis = dup_axis()) +
   theme(legend.position = "top") +
   ggtitle("Unbillable tasks")
@@ -298,14 +292,18 @@ plot(accumulated)
 
 plot(team)
 
-plot(rolling)
+if (TEMPO_DETAILS != '') {
+  plot(rolling)
 
-plot(tempo)
+  plot(tempo)
+}
 
 plot(tempo.detailed)
 
-plot(tempo.billable)
+if (TEMPO_DETAILS != '') {
+  plot(tempo.billable)
 
-plot(tempo.unbillable)
+  plot(tempo.unbillable)
+}
 
 ```
