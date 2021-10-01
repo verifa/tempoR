@@ -65,38 +65,50 @@ library(slider)
 library(lubridate)
 ```
 
-```{r fetch-data, echo = FALSE, message = FALSE}
-offset <- 0
-count <- 100
-TEMPO_LIMIT <- count
+```{r fetch-helpers, echo = FALSE, message = FALSE}
 
-while (count == TEMPO_LIMIT) {
-  TEMPO_QUERY <- paste0("worklogs?from=", TEMPO_START, "&to=", Sys.Date(), "&offset=", offset, "&limit=", TEMPO_LIMIT)
-  TEMPO_URL <- "https://api.tempo.io/core/3/"
-  url <- paste0(TEMPO_URL, TEMPO_QUERY)
-  header <- paste0("Bearer ", TEMPO_KEY)
-  message(url)
-  httpResponse <- GET(url, add_headers("Authorization" = header), accept_json(), timeout(20))
+fetch.tempo.data <- function(key, begins, ends) {
+  offset <- 0
+  count <- 100
+  TEMPO_LIMIT <- count
   
-  results <- fromJSON(content(httpResponse, "text"))
-  
-  count <- results$metadata$count
-  if (offset == 0) {
-    tempo.data <- results$results
-  } else {
-    tempo.data <- bind_rows(tempo.data, results$results)
+  while (count == TEMPO_LIMIT) {
+    TEMPO_QUERY <- paste0("worklogs?from=", begins,
+                          "&to=", ends, 
+                          "&offset=", offset, 
+                          "&limit=", TEMPO_LIMIT)
+    TEMPO_URL <- "https://api.tempo.io/core/3/"
+    url <- paste0(TEMPO_URL, TEMPO_QUERY)
+    header <- paste0("Bearer ", key)
+    message(url)
+    httpResponse <- GET(url, 
+                        add_headers("Authorization" = header), 
+                        accept_json(), 
+                        timeout(20))
     
+    results <- fromJSON(content(httpResponse, "text"))
+    
+    count <- results$metadata$count
+    if (offset == 0) {
+      data <- results$results
+    } else {
+      data <- bind_rows(data, results$results)
+      
+    }
+    offset <- offset + TEMPO_LIMIT
   }
-  offset <- offset + TEMPO_LIMIT
+  return(data)
 }
-
 
 workingdays <- function(begins, ends) {
   result <- c()
   for (i in seq(length.out=length(begins))) {
     # working days
     WD_URL = "http://api.arbetsdag.se/v2/dagar.json"
-    WD_QUERY = paste0("?fran=", as.Date(begins[i]), "&till=", as.Date(ends[i]), "&key=", WD_KEY, "&id=1234")
+    WD_QUERY = paste0("?fran=", as.Date(begins[i]), 
+                      "&till=", as.Date(ends[i]), 
+                      "&key=", WD_KEY, 
+                      "&id=1234")
     url = paste0(WD_URL, WD_QUERY)
     
     WD <- fromJSON(url)
@@ -107,6 +119,7 @@ workingdays <- function(begins, ends) {
 ```
 
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
+tempo.data <- fetch.tempo.data(TEMPO_KEY, TEMPO_START, Sys.Date())
 
 aggregated.data <- tempo.data %>%
   mutate(
