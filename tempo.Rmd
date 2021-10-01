@@ -1,7 +1,7 @@
 ---
-title: "tempo"
-author: "bosse"
-date: "8/9/2021"
+title: "tempo report"
+author: "`r Sys.getenv('USER')`"
+date: "`r Sys.Date()`"
 output: html_document
 ---
 
@@ -9,7 +9,6 @@ output: html_document
 knitr::opts_chunk$set(echo = TRUE)
 ```
 
-## tempo
 
 This is an R Markdown document. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
 
