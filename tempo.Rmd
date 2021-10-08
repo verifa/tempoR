@@ -68,6 +68,19 @@ library(lubridate)
 ```
 
 ```{r fetch-helpers, echo = FALSE, message = FALSE}
+TEMPO_URL <- "https://api.tempo.io/core/3/"
+
+fetch.tempo <- function(url, query, key) {
+    url <- paste0(url, query)
+    header <- paste0("Bearer ", key)
+    message(url)
+    httpResponse <- GET(url,
+                        add_headers("Authorization" = header),
+                        accept_json(),
+                        timeout(20))
+
+    return(fromJSON(content(httpResponse, "text")))
+}
 
 fetch.tempo.data <- function(key, begins, ends) {
   offset <- 0
@@ -79,17 +92,7 @@ fetch.tempo.data <- function(key, begins, ends) {
                           "&to=", ends,
                           "&offset=", offset,
                           "&limit=", TEMPO_LIMIT)
-    TEMPO_URL <- "https://api.tempo.io/core/3/"
-    url <- paste0(TEMPO_URL, TEMPO_QUERY)
-    header <- paste0("Bearer ", key)
-    message(url)
-    httpResponse <- GET(url,
-                        add_headers("Authorization" = header),
-                        accept_json(),
-                        timeout(20))
-
-    results <- fromJSON(content(httpResponse, "text"))
-
+    results <- fetch.tempo(TEMPO_URL, TEMPO_QUERY, key)
     count <- results$metadata$count
     if (offset == 0) {
       data <- results$results
