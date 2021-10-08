@@ -29,7 +29,7 @@ check.packages <- function(package.list) {
         print(paste("Please install", package, "for this to work"))
       }
     )
-  }  
+  }
 }
 ```
 
@@ -73,29 +73,29 @@ fetch.tempo.data <- function(key, begins, ends) {
   offset <- 0
   count <- 100
   TEMPO_LIMIT <- count
-  
+
   while (count == TEMPO_LIMIT) {
     TEMPO_QUERY <- paste0("worklogs?from=", begins,
-                          "&to=", ends, 
-                          "&offset=", offset, 
+                          "&to=", ends,
+                          "&offset=", offset,
                           "&limit=", TEMPO_LIMIT)
     TEMPO_URL <- "https://api.tempo.io/core/3/"
     url <- paste0(TEMPO_URL, TEMPO_QUERY)
     header <- paste0("Bearer ", key)
     message(url)
-    httpResponse <- GET(url, 
-                        add_headers("Authorization" = header), 
-                        accept_json(), 
+    httpResponse <- GET(url,
+                        add_headers("Authorization" = header),
+                        accept_json(),
                         timeout(20))
-    
+
     results <- fromJSON(content(httpResponse, "text"))
-    
+
     count <- results$metadata$count
     if (offset == 0) {
       data <- results$results
     } else {
       data <- bind_rows(data, results$results)
-      
+
     }
     offset <- offset + TEMPO_LIMIT
   }
@@ -107,12 +107,12 @@ workingdays <- function(begins, ends) {
   for (i in seq(length.out=length(begins))) {
     # working days
     WD_URL = "http://api.arbetsdag.se/v2/dagar.json"
-    WD_QUERY = paste0("?fran=", as.Date(begins[i]), 
-                      "&till=", as.Date(ends[i]), 
-                      "&key=", WD_KEY, 
+    WD_QUERY = paste0("?fran=", as.Date(begins[i]),
+                      "&till=", as.Date(ends[i]),
+                      "&key=", WD_KEY,
                       "&id=1234")
     url = paste0(WD_URL, WD_QUERY)
-    
+
     WD <- fromJSON(url)
     result[i] <- WD$antal_vardagar
   }
@@ -238,63 +238,68 @@ user.delta <- user.delta %>%
 ```{r tempo, echo = FALSE, warning = FALSE, message = FALSE}
 tempo <- ggplot(data = aggregated.data) +
   geom_col(aes(x = date, y = hours, fill = key)) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) + 
+  facet_wrap(~user) + scale_fill_hue(l = 45) +
   scale_y_continuous(
-    breaks = c(0,2,4,6,8,10), 
+    breaks = c(0,2,4,6,8,10),
     name = "Daily",
     sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
-  theme(legend.position = "top") +
+  theme(legend.position = "top",
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
   ggtitle("Daily logs")
 
 tempo.detailed <- ggplot(data = aggregated.data) +
   geom_col(aes(x = date, y = hours, fill = issue.key), show.legend = FALSE) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) + 
+  facet_wrap(~user) + scale_fill_hue(l = 45) +
   scale_y_continuous(
-    breaks = c(0,2,4,6,8,10), 
+    breaks = c(0,2,4,6,8,10),
     name = "Daily",
     sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
-  theme(legend.position = "top") +
+  theme(legend.position = "top",
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
   coord_cartesian(xlim = c(Sys.Date() - 14, Sys.Date())) +
   ggtitle("Detailed logs, last 14 days")
 
 tempo.billable <- ggplot(data = subset(user.detail, billable > 0)) +
-  geom_point(aes(x = reorder(issue.key, -hours), 
-                 y = hours, 
-                 color = issue.key, 
+  geom_point(aes(x = reorder(issue.key, -hours),
+                 y = hours,
+                 color = issue.key,
                  fill = issue.key), show.legend = FALSE) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) + 
+  facet_wrap(~user) + scale_fill_hue(l = 45) +
   scale_x_discrete(name = NULL) +
   scale_y_log10(
     name = "Logged hours [h]",
     sec.axis = dup_axis()) +
-  theme(legend.position = "top", legend.title = element_blank()) +
+  theme(legend.position = "top",
+        legend.title = element_blank(),
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
   ggtitle("Billable tasks")
 
 #   geom_col(aes(x = reorder(issue.key, -hours), y = hours, fill = issue.key)) +
 
 tempo.unbillable <- ggplot(data = subset(user.detail, billable == 0)) +
-  geom_point(aes(x = reorder(issue.key, -hours), 
+  geom_point(aes(x = reorder(issue.key, -hours),
                  y = hours,
                  color = issue.key,
                  fill = issue.key), show.legend = FALSE) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) + 
+  facet_wrap(~user) + scale_fill_hue(l = 45) +
   scale_x_discrete(name = NULL) +
   scale_y_log10(
     name = "Logged hours [h]",
     sec.axis = dup_axis()) +
-  theme(legend.position = "top") +
+  theme(legend.position = "top",
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
   ggtitle("Unbillable tasks")
 ```
 
 ```{r team, echo = FALSE, warning = FALSE, message = FALSE}
 team <- ggplot(data = team.summary) +
-  geom_point(aes(x = date, y = average.7.hours), color = "Gray50", shape = 1) + 
-  geom_point(aes(x = date, y = average.30.hours), color = "Dark Blue") + 
+  geom_point(aes(x = date, y = average.7.hours), color = "Gray50", shape = 1) +
+  geom_point(aes(x = date, y = average.30.hours), color = "Dark Blue") +
   geom_smooth(aes(x = date, y = average.30.hours), color = "Dark Blue") +
-  geom_point(aes(x = date, y = average.7.billable), color = "Gray75", shape = 1) + 
-  geom_point(aes(x = date, y = average.30.billable), color = "Dark Green") + 
+  geom_point(aes(x = date, y = average.7.billable), color = "Gray75", shape = 1) +
+  geom_point(aes(x = date, y = average.30.billable), color = "Dark Green") +
   geom_smooth(aes(x = date, y = average.30.billable), color = "Dark Green") +
   scale_color_hue(l = 45) + scale_fill_hue(l = 45) +
   scale_y_continuous(
@@ -302,25 +307,28 @@ team <- ggplot(data = team.summary) +
     name = "Weekly", 
     sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
-  theme(legend.position = "top", legend.title = element_blank())
+  theme(legend.position = "top",
+        legend.title = element_blank(),
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
 
 ```
 
 ```{r rolling, echo = FALSE, warning = FALSE, message = FALSE}
 rolling <- ggplot(data = user.summary) +
-  geom_point(aes(x = date, y = roll.7.hours), color = "Gray50", shape = 1) + 
-  geom_point(aes(x = date, y = roll.7.billable), color = "Gray75", shape = 1) + 
-  geom_point(aes(x = date, y = roll.30.hours), color = "Dark Blue") + 
-  geom_line(aes(x = date, y = roll.30.hours), color = "Dark Blue") + 
-  geom_point(aes(x = date, y = roll.30.billable), color = "Dark Green") + 
-  geom_line(aes(x = date, y = roll.30.billable), color = "Dark Green") + 
+  geom_point(aes(x = date, y = roll.7.hours), color = "Gray50", shape = 1) +
+  geom_point(aes(x = date, y = roll.7.billable), color = "Gray75", shape = 1) +
+  geom_point(aes(x = date, y = roll.30.hours), color = "Dark Blue") +
+  geom_line(aes(x = date, y = roll.30.hours), color = "Dark Blue") +
+  geom_point(aes(x = date, y = roll.30.billable), color = "Dark Green") +
+  geom_line(aes(x = date, y = roll.30.billable), color = "Dark Green") +
   facet_wrap(~user) + scale_fill_hue(l = 45) + scale_color_hue(l = 45) +
   scale_y_continuous(
     breaks = c(0,8,16,24,32,40, 48), 
     name = "Rolling Weekly [h]", 
     sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
-  theme(legend.position = "top", legend.title = element_blank())
+  theme(legend.position = "top", legend.title = element_blank(),
+        axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
 ```
 
 ```{r accumulated, echo = FALSE, warning = FALSE, message = FALSE}
