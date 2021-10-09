@@ -37,6 +37,8 @@ TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
 # No checking for this, used to filter how much details are plotted
 ```
 
+There is also a variable, `TEMPO_TEAM`, that can be used to use the entries for a specific team in tempo. If this is missing from the environment, the teams are read from tempo and the results for each team where the data is accessible will be present in the report. If this variable is set to a specific team id, the report will only contain that team and as a final option, if this is set to '0' the report will ignore teams in tempo and simply present the data which is accessible for the used TEMPO_KEY. There is a [script](####teams.sh) in the utility folder to help see what teams are configured in tempo.
+
 #### Configuration files
 
 Instead of using TEMPO_DAILY to set the working hours / working day, a csv file in the `config` folder can be used.
@@ -84,3 +86,15 @@ $ docker run -v ~/.Renviron:/root/.Renviron -v [path to this repo on your machin
 **Using the Makefile**
 
 Assuming docker and make are installed, generate the report using make, `tempo.html` is the default target, so all that is needed is `make`
+
+### Utility scripts
+
+In the `scripts` folder there are a few shell scripts that use `curl` to query tempo and `jq` to parse the result. They expect that the tempo api key can be read from `${HOME}/bin/tempo.token`.
+
+#### teams.sh
+
+This presents a list of team names and team id's
+
+#### team-logs.sh
+
+This takes a team id as argument and present the data read for that team.
