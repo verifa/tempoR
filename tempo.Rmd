@@ -47,6 +47,8 @@ TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
 # TEMPO_DAILY is the needed working ours per day, assuming a 5 day work week
 TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
 # No checking for this, used to filter how much details are plotted
+TEMPO_TEAM <- Sys.getenv("TEMPO_TEAM")
+# No check, does not have to be set
 WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
 check.if.empty(WD_KEY, "WD_KEY")
 ```
@@ -82,13 +84,25 @@ fetch.tempo <- function(url, query, key) {
     return(fromJSON(content(httpResponse, "text")))
 }
 
-fetch.tempo.data <- function(key, begins, ends) {
+fetch.tempo.teams <- function(url, key) {
+  query <- "teams"
+  data <- fetch.tempo(url, query, key)
+  # print(paste("Found", data$metadata, "teams"))
+  return(data$result)
+}
+
+fetch.tempo.data <- function(key, begins, ends, team = 0) {
   offset <- 0
   count <- 100
   TEMPO_LIMIT <- count
 
   while (count == TEMPO_LIMIT) {
-    TEMPO_QUERY <- paste0("worklogs?from=", begins,
+    TEAM_QUERY <- "worklogs"
+    if (team != 0) {
+      TEAM_QUERY <- paste0(TEAM_QUERY,"/team/", team)
+    }
+    TEMPO_QUERY <- paste0(TEAM_QUERY,
+                          "?from=", begins,
                           "&to=", ends,
                           "&offset=", offset,
                           "&limit=", TEMPO_LIMIT)
@@ -143,226 +157,245 @@ workinghours <- function(file = "config/workinghours.csv") {
 working.hours <- workinghours()
 # str(working.hours)
 
-tempo.data <- fetch.tempo.data(TEMPO_KEY, TEMPO_START, Sys.Date())
+team.data <- fetch.tempo.teams(TEMPO_URL, TEMPO_KEY)
+#str(team.data)
+team.data <- subset(team.data, select = c(id, name))
+#str(team.data)
+knitr::kable(team.data, caption = "Teams")
 
-aggregated.data <- tempo.data %>%
-  mutate(
-    user = author$displayName,
-    hours = timeSpentSeconds/(60*60),
-    billable = billableSeconds/(60*60),
-    date = as.Date(startDate),
-    key = str_replace(issue$key, "-.*", ""),
-    issue.key = issue$key
-  )
-
-# str(aggregated.data)
-
-user.data <- aggregated.data %>%
-  group_by(date, user, key) %>%
-  summarise(
-    hours = sum(hours),
-    billable = sum(billable)
-  )
-
-user.detail <- aggregated.data %>%
-  group_by(user, issue.key) %>%
-  summarise(
-    hours = sum(hours),
-    billable = sum(billable)
-  )
-
-user.summary <- aggregated.data %>%
-  group_by(date, user) %>%
-  summarise(
-    hours = sum(hours),
-    billable = sum(billable)
-  ) %>%
-  group_by(user) %>%
-  mutate(
-    cumulative.hours = cumsum(hours),
-    cumulative.billable = cumsum(billable),
-    roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = TRUE),
-    roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = TRUE),
-    roll.30.hours = slide_index_dbl(roll.7.hours, date, mean, .before = days(29), .complete = TRUE),
-    roll.30.billable = slide_index_dbl(roll.7.billable, date, mean, .before = days(29), .complete = TRUE)
-  )
-
-#str(user.summary)
-
-team.summary <- user.summary %>%
-  group_by(date) %>%
-  summarise(
-    average.7.hours = mean(roll.7.hours, na.rm = TRUE),
-    sd.7.hours = sd(roll.7.hours, na.rm = TRUE),
-    average.30.hours = mean(roll.30.hours, na.rm = TRUE),
-    sd.30.hours = sd(roll.30.hours, na.rm = TRUE),
-    average.7.billable = mean(roll.7.billable, na.rm = TRUE),
-    sd.7.billable = sd(roll.7.billable, na.rm = TRUE),
-    average.30.billable = mean(roll.30.billable, na.rm = TRUE),
-    sd.30.billable = sd(roll.30.billable, na.rm = TRUE)
-  )
-# str(team.summary)
-
-user.delta <- aggregated.data %>%
-  group_by(user) %>%
-  summarise(
-    start = min(startDate),
-    end = max(startDate),
-    hours = sum(hours),
-    billable = sum(billable)
-  )
-
-if (! is.null(working.hours)) {
-  user.delta <- merge(user.delta, working.hours, by = "user")
+if (TEMPO_TEAM != '') {
+  teams <- c(TEMPO_TEAM)
 } else {
-  if (TEMPO_DAILY == '') {
-    TEMPO_DAILY = 8
+  teams <- team.data$id
+}
+
+aggregated.data <- tibble()
+
+for (team in teams) {
+  tempo.data <- fetch.tempo.data(TEMPO_KEY, TEMPO_START, Sys.Date(), team)
+  #str(tempo.data)
+  
+  aggregated.team.data <- tibble()
+  
+  if (length(tempo.data) > 0) {
+    
+    aggregated.team.data <- tempo.data %>%
+      mutate(
+        user = author$displayName,
+        hours = timeSpentSeconds/(60*60),
+        billable = billableSeconds/(60*60),
+        date = as.Date(startDate),
+        key = str_replace(issue$key, "-.*", ""),
+        issue.key = issue$key,
+        team = team
+      )
+    aggregated.data <- bind_rows(aggregated.data, aggregated.team.data)
   }
+}
+
+if ( ! length(aggregated.data) > 0) {
+  stop("Could not fetch any data")
+}
+
+teams.with.data <- levels(factor(aggregated.data$team))
+# str(teams.with.data)
+
+for (team.id in teams.with.data) {
+  
+  print(subset(team.data, id == team.id)$name)
+  user.data <- subset(aggregated.data, team == team.id) %>%
+    group_by(date, user, key) %>%
+    summarise(
+      hours = sum(hours),
+      billable = sum(billable)
+    )
+  
+  user.detail <- subset(aggregated.data, team == team.id) %>%
+    group_by(user, issue.key) %>%
+    summarise(
+      hours = sum(hours),
+      billable = sum(billable)
+    )
+  
+  user.summary <- subset(aggregated.data, team == team.id) %>%
+    group_by(date, user) %>%
+    summarise(
+      hours = sum(hours),
+      billable = sum(billable)
+    ) %>%
+    group_by(user) %>%
+    mutate(
+      cumulative.hours = cumsum(hours),
+      cumulative.billable = cumsum(billable),
+      roll.7.hours = slide_index_dbl(hours, date, sum, .before = days(6), .complete = TRUE),
+      roll.7.billable = slide_index_dbl(billable, date, sum, .before = days(6), .complete = TRUE),
+      roll.30.hours = slide_index_dbl(roll.7.hours, date, mean, .before = days(29), .complete = TRUE),
+      roll.30.billable = slide_index_dbl(roll.7.billable, date, mean, .before = days(29), .complete = TRUE)
+    )
+  
+  #str(user.summary)
+  
+  team.summary <- user.summary %>%
+    group_by(date) %>%
+    summarise(
+      average.7.hours = mean(roll.7.hours, na.rm = TRUE),
+      sd.7.hours = sd(roll.7.hours, na.rm = TRUE),
+      average.30.hours = mean(roll.30.hours, na.rm = TRUE),
+      sd.30.hours = sd(roll.30.hours, na.rm = TRUE),
+      average.7.billable = mean(roll.7.billable, na.rm = TRUE),
+      sd.7.billable = sd(roll.7.billable, na.rm = TRUE),
+      average.30.billable = mean(roll.30.billable, na.rm = TRUE),
+      sd.30.billable = sd(roll.30.billable, na.rm = TRUE)
+    )
+  # str(team.summary)
+  
+  user.delta <- subset(aggregated.data, team == team.id) %>%
+    group_by(user) %>%
+    summarise(
+      start = min(startDate),
+      end = max(startDate),
+      hours = sum(hours),
+      billable = sum(billable)
+    )
+  
+  if (! is.null(working.hours)) {
+    user.delta <- merge(user.delta, working.hours, by = "user")
+  } else {
+    if (TEMPO_DAILY == '') {
+      TEMPO_DAILY = 8
+    }
+    user.delta <- user.delta %>%
+      group_by(user) %>%
+      mutate(
+        daily = as.numeric(TEMPO_DAILY)
+      )
+  }
+  
   user.delta <- user.delta %>%
     group_by(user) %>%
     mutate(
-      daily = as.numeric(TEMPO_DAILY)
+      expected = daily * workingdays(start, end), 
+      delta = hours - expected,
+      fraction = 100 * billable / expected
     )
-}
+  
+  # str(user.delta)
+  
+  tempo <- ggplot(data = subset(aggregated.data, team == team.id)) +
+    geom_col(aes(x = date, y = hours, fill = key)) +
+    facet_wrap(~user) + scale_fill_hue(l = 45) +
+    scale_y_continuous(
+      breaks = c(0,2,4,6,8,10),
+      name = "Daily",
+      sec.axis = dup_axis()) +
+    scale_x_date(name = NULL) +
+    theme(legend.position = "top",
+          axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
+    ggtitle("Daily logs")
+  
+  tempo.detailed <- ggplot(data = subset(aggregated.data, team == team.id)) +
+    geom_col(aes(x = date, y = hours, fill = issue.key), show.legend = FALSE) +
+    facet_wrap(~user) + scale_fill_hue(l = 45) +
+    scale_y_continuous(
+      breaks = c(0,2,4,6,8,10),
+      name = "Daily",
+      sec.axis = dup_axis()) +
+    scale_x_date(name = NULL) +
+    theme(legend.position = "top",
+          axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
+    coord_cartesian(xlim = c(Sys.Date() - 14, Sys.Date())) +
+    ggtitle("Detailed logs, last 14 days")
+  
+  tempo.billable <- ggplot(data = subset(user.detail, billable > 0)) +
+    geom_point(aes(x = reorder(issue.key, -hours),
+                   y = hours,
+                   color = issue.key,
+                   fill = issue.key), show.legend = FALSE) +
+    facet_wrap(~user) + scale_fill_hue(l = 45) +
+    scale_x_discrete(name = NULL) +
+    scale_y_log10(
+      name = "Logged hours [h]",
+      sec.axis = dup_axis()) +
+    theme(legend.position = "top",
+          legend.title = element_blank(),
+          axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
+    ggtitle("Billable tasks")
+  
+  
+  tempo.unbillable <- ggplot(data = subset(user.detail, billable == 0)) +
+    geom_point(aes(x = reorder(issue.key, -hours),
+                   y = hours,
+                   color = issue.key,
+                   fill = issue.key), show.legend = FALSE) +
+    facet_wrap(~user) + scale_fill_hue(l = 45) +
+    scale_x_discrete(name = NULL) +
+    scale_y_log10(
+      name = "Logged hours [h]",
+      sec.axis = dup_axis()) +
+    theme(legend.position = "top",
+          axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
+    ggtitle("Unbillable tasks")
+  
+  team <- ggplot(data = team.summary) +
+    geom_point(aes(x = date, y = average.7.hours), color = "Gray50", shape = 1) +
+    geom_point(aes(x = date, y = average.30.hours), color = "Dark Blue") +
+    geom_smooth(aes(x = date, y = average.30.hours), color = "Dark Blue") +
+    geom_point(aes(x = date, y = average.7.billable), color = "Gray75", shape = 1) +
+    geom_point(aes(x = date, y = average.30.billable), color = "Dark Green") +
+    geom_smooth(aes(x = date, y = average.30.billable), color = "Dark Green") +
+    scale_color_hue(l = 45) + scale_fill_hue(l = 45) +
+    scale_y_continuous(
+      breaks = c(0,8,16,24,32,40, 48,56), 
+      name = "Weekly", 
+      sec.axis = dup_axis()) +
+    scale_x_date(name = NULL) +
+    theme(legend.position = "top",
+          legend.title = element_blank(),
+          axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
+  
+  rolling <- ggplot(data = user.summary) +
+    geom_point(aes(x = date, y = roll.7.hours), color = "Gray50", shape = 1) +
+    geom_point(aes(x = date, y = roll.7.billable), color = "Gray75", shape = 1) +
+    geom_point(aes(x = date, y = roll.30.hours), color = "Dark Blue") +
+    geom_line(aes(x = date, y = roll.30.hours), color = "Dark Blue") +
+    geom_point(aes(x = date, y = roll.30.billable), color = "Dark Green") +
+    geom_line(aes(x = date, y = roll.30.billable), color = "Dark Green") +
+    facet_wrap(~user) + scale_fill_hue(l = 45) + scale_color_hue(l = 45) +
+    scale_y_continuous(
+      breaks = c(0,8,16,24,32,40, 48), 
+      name = "Rolling Weekly [h]", 
+      sec.axis = dup_axis()) +
+    scale_x_date(name = NULL) +
+    theme(legend.position = "top", legend.title = element_blank(),
+          axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
 
-user.delta <- user.delta %>%
-  group_by(user) %>%
-  mutate(
-    expected = daily * workingdays(start, end), 
-    delta = hours - expected,
-    fraction = 100 * billable / expected
-  )
+  accumulated <- ggplot(data = user.delta) +
+    geom_col(aes(x = user, y = delta, fill = user), show.legend = FALSE) +
+    scale_fill_hue(l = 45) +
+    scale_x_discrete(name = NULL) +
+    scale_y_continuous(
+      name = "Delta hours [h]",
+      sec.axis = dup_axis()) +
+    ggtitle(subset(team.data, id == team.id)$name)
 
-# str(user.delta)
-
-```
-
-
-```{r tempo, echo = FALSE, warning = FALSE, message = FALSE}
-tempo <- ggplot(data = aggregated.data) +
-  geom_col(aes(x = date, y = hours, fill = key)) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) +
-  scale_y_continuous(
-    breaks = c(0,2,4,6,8,10),
-    name = "Daily",
-    sec.axis = dup_axis()) +
-  scale_x_date(name = NULL) +
-  theme(legend.position = "top",
-        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
-  ggtitle("Daily logs")
-
-tempo.detailed <- ggplot(data = aggregated.data) +
-  geom_col(aes(x = date, y = hours, fill = issue.key), show.legend = FALSE) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) +
-  scale_y_continuous(
-    breaks = c(0,2,4,6,8,10),
-    name = "Daily",
-    sec.axis = dup_axis()) +
-  scale_x_date(name = NULL) +
-  theme(legend.position = "top",
-        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
-  coord_cartesian(xlim = c(Sys.Date() - 14, Sys.Date())) +
-  ggtitle("Detailed logs, last 14 days")
-
-tempo.billable <- ggplot(data = subset(user.detail, billable > 0)) +
-  geom_point(aes(x = reorder(issue.key, -hours),
-                 y = hours,
-                 color = issue.key,
-                 fill = issue.key), show.legend = FALSE) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) +
-  scale_x_discrete(name = NULL) +
-  scale_y_log10(
-    name = "Logged hours [h]",
-    sec.axis = dup_axis()) +
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
-  ggtitle("Billable tasks")
-
-#   geom_col(aes(x = reorder(issue.key, -hours), y = hours, fill = issue.key)) +
-
-tempo.unbillable <- ggplot(data = subset(user.detail, billable == 0)) +
-  geom_point(aes(x = reorder(issue.key, -hours),
-                 y = hours,
-                 color = issue.key,
-                 fill = issue.key), show.legend = FALSE) +
-  facet_wrap(~user) + scale_fill_hue(l = 45) +
-  scale_x_discrete(name = NULL) +
-  scale_y_log10(
-    name = "Logged hours [h]",
-    sec.axis = dup_axis()) +
-  theme(legend.position = "top",
-        axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
-  ggtitle("Unbillable tasks")
-```
-
-```{r team, echo = FALSE, warning = FALSE, message = FALSE}
-team <- ggplot(data = team.summary) +
-  geom_point(aes(x = date, y = average.7.hours), color = "Gray50", shape = 1) +
-  geom_point(aes(x = date, y = average.30.hours), color = "Dark Blue") +
-  geom_smooth(aes(x = date, y = average.30.hours), color = "Dark Blue") +
-  geom_point(aes(x = date, y = average.7.billable), color = "Gray75", shape = 1) +
-  geom_point(aes(x = date, y = average.30.billable), color = "Dark Green") +
-  geom_smooth(aes(x = date, y = average.30.billable), color = "Dark Green") +
-  scale_color_hue(l = 45) + scale_fill_hue(l = 45) +
-  scale_y_continuous(
-    breaks = c(0,8,16,24,32,40, 48,56), 
-    name = "Weekly", 
-    sec.axis = dup_axis()) +
-  scale_x_date(name = NULL) +
-  theme(legend.position = "top",
-        legend.title = element_blank(),
-        axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
-
-```
-
-```{r rolling, echo = FALSE, warning = FALSE, message = FALSE}
-rolling <- ggplot(data = user.summary) +
-  geom_point(aes(x = date, y = roll.7.hours), color = "Gray50", shape = 1) +
-  geom_point(aes(x = date, y = roll.7.billable), color = "Gray75", shape = 1) +
-  geom_point(aes(x = date, y = roll.30.hours), color = "Dark Blue") +
-  geom_line(aes(x = date, y = roll.30.hours), color = "Dark Blue") +
-  geom_point(aes(x = date, y = roll.30.billable), color = "Dark Green") +
-  geom_line(aes(x = date, y = roll.30.billable), color = "Dark Green") +
-  facet_wrap(~user) + scale_fill_hue(l = 45) + scale_color_hue(l = 45) +
-  scale_y_continuous(
-    breaks = c(0,8,16,24,32,40, 48), 
-    name = "Rolling Weekly [h]", 
-    sec.axis = dup_axis()) +
-  scale_x_date(name = NULL) +
-  theme(legend.position = "top", legend.title = element_blank(),
-        axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
-```
-
-```{r accumulated, echo = FALSE, warning = FALSE, message = FALSE}
-accumulated <- ggplot(data = user.delta) +
-  geom_col(aes(x = user, y = delta, fill = user), show.legend = FALSE) +
-  scale_fill_hue(l = 45) +
-  scale_x_discrete(name = NULL) +
-  scale_y_continuous(
-    name = "Delta hours [h]",
-    sec.axis = dup_axis())
-```
-
-```{r plot, echo = FALSE, warning = FALSE, message = FALSE}
-knitr::kable(user.delta, caption = "User summary")
-
-plot(accumulated)
-
-plot(team)
-
-if (TEMPO_DETAILS != '') {
-  plot(rolling)
-
-  plot(tempo)
-}
-
-plot(tempo.detailed)
-
-if (TEMPO_DETAILS != '') {
-  plot(tempo.billable)
-
-  plot(tempo.unbillable)
+  print(knitr::kable(user.delta, caption = "User summary"))
+  plot(accumulated)
+  
+  plot(team)
+  
+  if (TEMPO_DETAILS != '') {
+    plot(rolling)
+    
+    plot(tempo)
+  }
+  
+  plot(tempo.detailed)
+  
+  if (TEMPO_DETAILS != '') {
+    plot(tempo.billable)
+    
+    plot(tempo.unbillable)
+  }
 }
 
 ```
