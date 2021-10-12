@@ -43,7 +43,8 @@ check.if.empty(TEMPO_KEY, "TEMPO_KEY")
 TEMPO_START <- Sys.getenv("TEMPO_START")
 check.if.empty(TEMPO_START, "TEMPO_START")
 TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
-# No checking for this
+# No checking for this, can be set this way, or through a config/workinghours.csv file
+# TEMPO_DAILY is the needed working ours per day, assuming a 5 day work week
 TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
 # No checking for this, used to filter how much details are plotted
 WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
@@ -217,7 +218,7 @@ if (! is.null(working.hours)) {
   user.delta <- user.delta %>%
     group_by(user) %>%
     mutate(
-      daily = TEMPO_DAILY
+      daily = as.numeric(TEMPO_DAILY)
     )
 }
 
