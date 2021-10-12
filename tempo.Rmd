@@ -42,6 +42,8 @@ TEMPO_KEY <- Sys.getenv("TEMPO_KEY")
 check.if.empty(TEMPO_KEY, "TEMPO_KEY")
 TEMPO_START <- Sys.getenv("TEMPO_START")
 check.if.empty(TEMPO_START, "TEMPO_START")
+TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
+# No checking for this
 TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
 # No checking for this, used to filter how much details are plotted
 WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
@@ -117,7 +119,26 @@ workingdays <- function(begins, ends) {
 }
 ```
 
+```{r working-hours, echo = FALSE}
+workinghours <- function(file = "config/workinghours.csv") {
+  result <- c()
+  
+  if (file.exists(file)) {
+    result <- read.csv(file)
+  } else {
+    print(paste("No such file:", file))
+  }
+  
+  return(result)
+}
+
+```
+
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
+
+working.hours <- workinghours()
+# str(working.hours)
+
 tempo.data <- fetch.tempo.data(TEMPO_KEY, TEMPO_START, Sys.Date())
 
 aggregated.data <- tempo.data %>%
@@ -183,10 +204,28 @@ user.delta <- aggregated.data %>%
   summarise(
     start = min(startDate),
     end = max(startDate),
-    expected = 8 * workingdays(start, end), 
     hours = sum(hours),
+    billable = sum(billable)
+  )
+
+if (! is.null(working.hours)) {
+  user.delta <- merge(user.delta, working.hours, by = "user")
+} else {
+  if (TEMPO_DAILY == '') {
+    TEMPO_DAILY = 8
+  }
+  user.delta <- user.delta %>%
+    group_by(user) %>%
+    mutate(
+      daily = TEMPO_DAILY
+    )
+}
+
+user.delta <- user.delta %>%
+  group_by(user) %>%
+  mutate(
+    expected = daily * workingdays(start, end), 
     delta = hours - expected,
-    billable = sum(billable),
     fraction = 100 * billable / expected
   )
 
@@ -260,9 +299,7 @@ team <- ggplot(data = team.summary) +
   scale_y_continuous(
     breaks = c(0,8,16,24,32,40, 48,56), 
     name = "Weekly", 
-    sec.axis = sec_axis(~ . * 2.5, 
-                        breaks = c(0, 20, 40, 60, 80, 100), 
-                        name = "Rolling Fraction [%] ")) +
+    sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
   theme(legend.position = "top", legend.title = element_blank())
 
@@ -280,9 +317,7 @@ rolling <- ggplot(data = user.summary) +
   scale_y_continuous(
     breaks = c(0,8,16,24,32,40, 48), 
     name = "Rolling Weekly [h]", 
-    sec.axis = sec_axis(~ . * 2.5, 
-                        breaks = c(0, 20, 40, 60, 80, 100), 
-                        name = "Rolling Fraction [%] ")) +
+    sec.axis = dup_axis()) +
   scale_x_date(name = NULL) +
   theme(legend.position = "top", legend.title = element_blank())
 ```
