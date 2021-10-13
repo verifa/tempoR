@@ -15,7 +15,7 @@ The ambition is to include the plot necessary to support both a sustainable way 
 ### Dependencies
 
 Currently [arbetsdagar.se](https://arbetsdagar.se) is used to determine the expected work time for the duration that is reported. To use that you have to create an account and create an API key.
-### 
+### Configuration
 
 To be able to knit a document in R there are, at the moment, 3 environment variables that are needed to be set in the `.Renviron` file in your home directory.
 
@@ -26,6 +26,30 @@ TEMPO_START=<the day you started reporting time in tempo, e.g. 2021-08-01>
 # arbetsdagar.se
 ARBETSDAGAR_KEY=<the created api key> 
 ```
+
+Then there are a couple of variables that is possible to use to control the generated report
+
+```r
+TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
+# No checking for this, can be set this way, or through a config/workinghours.csv file
+# TEMPO_DAILY is the needed working ours per day, assuming a 5 day work week
+TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
+# No checking for this, used to filter how much details are plotted
+```
+
+#### Configuration files
+
+Instead of using TEMPO_DAILY to set the working hours / working day, a csv file in the `config` folder can be used.
+
+The expected name is `workinghours.csv`, which is a simple csv file with 2 columns and one row per user, that will be used when comparing a users reported working hours with the expected amount of working hours.
+
+```
+user, daily
+<name>, <number of hours>
+....
+```
+
+This is to enable a separate private repository for sensitive information.
 
 ## Usage
 
