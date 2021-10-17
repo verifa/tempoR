@@ -15,22 +15,9 @@ This is an R Markdown document. For more details on using R Markdown see <http:/
 When you click the **Knit** button to generate the document.
 
 ```{r functions, echo = FALSE}
-check.if.empty <- function(var, name) {
-  if (var == "") {
-    stop.message <- paste(name, "is not defined")
-    stop(stop.message)
-  }
-}
 
-check.packages <- function(package.list) {
-  for (package in package.list) {
-    tryCatch(find.package(package),
-      error = function(e) {
-        print(paste("Please install", package, "for this to work"))
-      }
-    )
-  }
-}
+source("r-helpers.R")
+
 ```
 
 ### Environment variables
