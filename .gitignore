@@ -4,6 +4,7 @@
 .Ruserdata
 
 *.html
+!shiny/shinyapps/index.html
 
 # config files from another repo in config
 /config/
