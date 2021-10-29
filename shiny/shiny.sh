@@ -1,5 +1,6 @@
 #!/bin/sh
 
+pushd $(dirname ${0})
 SHINY_DOCS="tempo.html"
 
 if [ ! -f "../tempo.html" ]; then
@@ -17,3 +18,4 @@ docker run --rm -p 3838:3838 \
     -u shiny \
     docker.io/rocker/shiny-verse
 
+popd
