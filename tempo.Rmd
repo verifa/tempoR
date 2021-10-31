@@ -60,15 +60,15 @@ library(lubridate)
 TEMPO_URL <- "https://api.tempo.io/core/3/"
 
 fetch.tempo <- function(url, query, key) {
-    url <- paste0(url, query)
-    header <- paste0("Bearer ", key)
-    message(url)
-    httpResponse <- GET(url,
-                        add_headers("Authorization" = header),
-                        accept_json(),
-                        timeout(20))
-
-    return(fromJSON(content(httpResponse, "text")))
+  url <- paste0(url, query)
+  header <- paste0("Bearer ", key)
+  message(url)
+  httpResponse <- GET(url,
+                      add_headers("Authorization" = header),
+                      accept_json(),
+                      timeout(20))
+  
+  return(fromJSON(content(httpResponse, "text")))
 }
 
 fetch.tempo.teams <- function(url, key) {
@@ -82,7 +82,7 @@ fetch.tempo.data <- function(key, begins, ends, team = 0) {
   offset <- 0
   count <- 100
   TEMPO_LIMIT <- count
-
+  
   while (count == TEMPO_LIMIT) {
     TEAM_QUERY <- "worklogs"
     if (team != 0) {
@@ -99,7 +99,7 @@ fetch.tempo.data <- function(key, begins, ends, team = 0) {
       data <- results$results
     } else {
       data <- bind_rows(data, results$results)
-
+      
     }
     offset <- offset + TEMPO_LIMIT
   }
@@ -116,7 +116,7 @@ workingdays <- function(begins, ends) {
                       "&key=", WD_KEY,
                       "&id=1234")
     url = paste0(WD_URL, WD_QUERY)
-
+    
     WD <- fromJSON(url)
     result[i] <- WD$antal_vardagar
   }
@@ -142,12 +142,9 @@ workinghours <- function(file = "config/workinghours.csv") {
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
 
 working.hours <- workinghours()
-# str(working.hours)
 
 team.data <- fetch.tempo.teams(TEMPO_URL, TEMPO_KEY)
-#str(team.data)
 team.data <- subset(team.data, select = c(id, name))
-#str(team.data)
 knitr::kable(team.data, caption = "Teams")
 
 if (TEMPO_TEAM != '') {
@@ -160,8 +157,7 @@ aggregated.data <- tibble()
 
 for (team in teams) {
   tempo.data <- fetch.tempo.data(TEMPO_KEY, TEMPO_START, Sys.Date(), team)
-  #str(tempo.data)
-  
+
   aggregated.team.data <- tibble()
   
   if (length(tempo.data) > 0) {
@@ -184,27 +180,34 @@ if ( ! length(aggregated.data) > 0) {
   stop("Could not fetch any data")
 }
 
-teams.with.data <- levels(factor(aggregated.data$team))
-# str(teams.with.data)
+```
 
-for (team.id in teams.with.data) {
-  
-  print(subset(team.data, id == team.id)$name)
-  user.data <- subset(aggregated.data, team == team.id) %>%
+```{r data-generators, echo = FALSE}
+# A set of generic functions that operate on the "aggregated" data
+# to produce data formatted for the plots
+
+gen.user.data <- function(data, id) {
+  user.data <- subset(data, team == id) %>%
     group_by(date, user, key) %>%
     summarise(
       hours = sum(hours),
       billable = sum(billable)
     )
-  
-  user.detail <- subset(aggregated.data, team == team.id) %>%
+  return(user.data)
+}
+
+gen.user.detail <- function(data, id) {
+  user.detail <- subset(data, team == id) %>%
     group_by(user, issue.key) %>%
     summarise(
       hours = sum(hours),
       billable = sum(billable)
     )
-  
-  user.summary <- subset(aggregated.data, team == team.id) %>%
+  return(user.detail)
+}
+
+gen.user.summary <- function(data, id) {
+  user.summary <- subset(data, team == id) %>%
     group_by(date, user) %>%
     summarise(
       hours = sum(hours),
@@ -220,9 +223,11 @@ for (team.id in teams.with.data) {
       roll.30.billable = slide_index_dbl(roll.7.billable, date, mean, .before = days(29), .complete = TRUE)
     )
   
-  #str(user.summary)
-  
-  team.summary <- user.summary %>%
+  return(user.summary)
+}
+
+gen.team.summary <- function(summary) {
+  team.summary <- summary %>%
     group_by(date) %>%
     summarise(
       average.7.hours = mean(roll.7.hours, na.rm = TRUE),
@@ -234,9 +239,12 @@ for (team.id in teams.with.data) {
       average.30.billable = mean(roll.30.billable, na.rm = TRUE),
       sd.30.billable = sd(roll.30.billable, na.rm = TRUE)
     )
-  # str(team.summary)
   
-  user.delta <- subset(aggregated.data, team == team.id) %>%
+  return(team.summary)
+}
+
+gen.user.delta <- function(data, id) {
+  user.delta <- subset(data, team == id) %>%
     group_by(user) %>%
     summarise(
       start = min(startDate),
@@ -257,7 +265,6 @@ for (team.id in teams.with.data) {
         daily = as.numeric(TEMPO_DAILY)
       )
   }
-  
   user.delta <- user.delta %>%
     group_by(user) %>%
     mutate(
@@ -266,8 +273,29 @@ for (team.id in teams.with.data) {
       fraction = 100 * billable / expected
     )
   
-  # str(user.delta)
+  return(user.delta)
+}
+     
+```
+
+```{r, echo = FALSE, warning = FALSE, message = FALSE}
+
+teams.with.data <- levels(factor(aggregated.data$team))
+
+for (team.id in teams.with.data) {
   
+  print(subset(team.data, id == team.id)$name)
+  
+  user.data <- gen.user.data(aggregated.data, team.id)
+  
+  user.detail <- gen.user.detail(aggregated.data, team.id)
+  
+  user.summary <- gen.user.summary(aggregated.data, team.id)
+  
+  team.summary <- gen.team.summary(user.summary)
+   
+  user.delta <- gen.user.delta(aggregated.data, team.id)
+
   tempo <- ggplot(data = subset(aggregated.data, team == team.id)) +
     geom_col(aes(x = date, y = hours, fill = key)) +
     facet_wrap(~user) + scale_fill_hue(l = 45) +
@@ -355,7 +383,7 @@ for (team.id in teams.with.data) {
     scale_x_date(name = NULL) +
     theme(legend.position = "top", legend.title = element_blank(),
           axis.text.x = element_text(size = 6, angle = 45, hjust = 1))
-
+  
   accumulated <- ggplot(data = user.delta) +
     geom_col(aes(x = user, y = delta, fill = user), show.legend = FALSE) +
     scale_fill_hue(l = 45) +
@@ -364,7 +392,7 @@ for (team.id in teams.with.data) {
       name = "Delta hours [h]",
       sec.axis = dup_axis()) +
     ggtitle(subset(team.data, id == team.id)$name)
-
+  
   print(knitr::kable(user.delta, caption = "User summary"))
   plot(accumulated)
   
