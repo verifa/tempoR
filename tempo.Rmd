@@ -187,13 +187,13 @@ if ( ! length(aggregated.data) > 0) {
 source("data-helpers.R")     
 ```
 
-```{r, echo = FALSE, warning = FALSE, message = FALSE}
+```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "asis"}
 
 teams.with.data <- levels(factor(aggregated.data$team))
 
 for (team.id in teams.with.data) {
   
-  print(subset(team.data, id == team.id)$name)
+  # print(subset(team.data, id == team.id)$name)
   
   user.data <- gen.user.data(aggregated.data, team.id)
   
@@ -299,10 +299,10 @@ for (team.id in teams.with.data) {
     scale_x_discrete(name = NULL) +
     scale_y_continuous(
       name = "Delta hours [h]",
-      sec.axis = dup_axis()) +
-    ggtitle(subset(team.data, id == team.id)$name)
+      sec.axis = dup_axis())
   
-  print(knitr::kable(user.delta, caption = "User summary"))
+  print(knitr::kable(user.delta, caption = subset(team.data, id == team.id)$name))
+  
   plot(accumulated)
   
   plot(team)
