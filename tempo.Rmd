@@ -145,7 +145,8 @@ working.hours <- workinghours()
 
 team.data <- fetch.tempo.teams(TEMPO_URL, TEMPO_KEY)
 team.data <- subset(team.data, select = c(id, name))
-knitr::kable(team.data, caption = "Teams")
+knitr::kable(team.data, caption = "Teams",
+             col.names = capwords(names(team.data)))
 
 if (TEMPO_TEAM != '') {
   teams <- c(TEMPO_TEAM)
@@ -301,7 +302,9 @@ for (team.id in teams.with.data) {
       name = "Delta hours [h]",
       sec.axis = dup_axis())
   
-  print(knitr::kable(user.delta, caption = subset(team.data, id == team.id)$name))
+  print(knitr::kable(user.delta, 
+                     caption = subset(team.data, id == team.id)$name,
+                     col.names = capwords(names(user.delta))))
   
   plot(accumulated)
   
