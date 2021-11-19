@@ -3,6 +3,7 @@ title: "tempo report"
 author: "`r Sys.getenv('USER')`"
 date: "`r Sys.Date()`"
 output: html_document
+runtime: shiny
 ---
 
 ```{r setup, include=FALSE}
@@ -42,7 +43,7 @@ check.if.empty(WD_KEY, "WD_KEY")
 
 where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo. WD_KEY is the api key for "arbetsdagar.se", you will have to register, at least, a free account to use the service.
 
-```{r libraries, echo = FALSE, warning = FALSE, message = FALSE}
+```{r libraries, echo = FALSE, warning = TRUE, message = TRUE}
 
 packages <- c("tidyverse", "jsonlite", "httr", "stringr", "slider", "lubridate")
 check.packages(packages)
@@ -106,22 +107,6 @@ fetch.tempo.data <- function(key, begins, ends, team = 0) {
   return(data)
 }
 
-workingdays <- function(begins, ends) {
-  result <- c()
-  for (i in seq(length.out=length(begins))) {
-    # working days
-    WD_URL = "http://api.arbetsdag.se/v2/dagar.json"
-    WD_QUERY = paste0("?fran=", as.Date(begins[i]),
-                      "&till=", as.Date(ends[i]),
-                      "&key=", WD_KEY,
-                      "&id=1234")
-    url = paste0(WD_URL, WD_QUERY)
-    
-    WD <- fromJSON(url)
-    result[i] <- WD$antal_vardagar
-  }
-  return(result)
-}
 ```
 
 ```{r working-hours, echo = FALSE}
@@ -196,56 +181,83 @@ source("ggplot-helpers.R")
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "asis"}
 
 teams.with.data <- levels(factor(aggregated.data$team))
+```
 
-for (team.id in teams.with.data) {
-  
-  # print(subset(team.data, id == team.id)$name)
-  
-  user.data <- gen.user.data(aggregated.data, team.id)
-  
-  user.detail <- gen.user.detail(aggregated.data, team.id)
-  
-  user.summary <- gen.user.summary(aggregated.data, team.id)
-  
-  team.summary <- gen.team.summary(user.summary)
-   
-  user.delta <- gen.user.delta(aggregated.data, team.id, working.hours, WD_KEY)
+```{r input, echo = FALSE}
+library(shiny)
+inputPanel(
+  selectInput("team.id", label = "Team Id: ", choices = c("", teams.with.data), selected = NA)
+)
+```
 
-  tempo <- tempo.daily.plot(aggregated.data, team.id)
-  
-  tempo.detailed <- tempo.detailed.plot(aggregated.data, team.id)
-  
-  tempo.billable <- tempo.billable.plot(user.detail)
-  
-  tempo.unbillable <- tempo.unbillable.plot(user.detail)
-  
-  team <- team.plot(team.summary)
+```{r echo = FALSE}
 
-  rolling <- rolling.plot(user.summary)    
-  
-  accumulated <- accumulated.plot(user.delta)
-  
-  print(knitr::kable(user.delta, 
-                     caption = subset(team.data, id == team.id)$name,
-                     col.names = capwords(names(user.delta))))
-  
-  plot(accumulated)
-  
-  plot(team)
-  
-  if (TEMPO_DETAILS != '') {
-    plot(rolling)
-    
-    plot(tempo)
+renderTable({
+ if ( input$team.id != "" ) {
+   user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY)
+  } 
+})
+
+renderPlot({
+  if ( input$team.id != "" ) {
+   user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY)
+    accumulated <- accumulated.plot(user.delta)
+    plot(accumulated)
   }
-  
-  plot(tempo.detailed)
-  
-  if (TEMPO_DETAILS != '') {
-    plot(tempo.billable)
-    
-    plot(tempo.unbillable)
+})
+
+renderPlot({
+  if ( input$team.id != "" ) {
+    user.summary <- gen.user.summary(aggregated.data, input$team.id)
+    team.summary <- gen.team.summary(user.summary)
+    team <- team.plot(team.summary)
+    plot(team)
   }
+})
+
+if (TEMPO_DETAILS != '') {
+  renderPlot({
+    if ( input$team.id != "" ) {
+      user.summary <- gen.user.summary(aggregated.data, input$team.id)
+      rolling <- rolling.plot(user.summary)    
+      plot(rolling)
+    }
+  })
 }
 
+if (TEMPO_DETAILS != '') {
+  renderPlot({
+    if ( input$team.id != "" ) {
+      tempo <- tempo.daily.plot(aggregated.data, input$team.id)
+      plot(tempo)
+    }
+  })
+}
+
+renderPlot({
+  if ( input$team.id != "" ) {
+    tempo.detailed <- tempo.detailed.plot(aggregated.data, input$team.id)
+    plot(tempo.detailed)
+  }
+})
+
+if (TEMPO_DETAILS != '') {
+  renderPlot({
+    if ( input$team.id != "" ) {
+      user.detail <- gen.user.detail(aggregated.data, input$team.id)
+      tempo.billable <- tempo.billable.plot(user.detail)
+      plot(tempo.billable)
+    }
+  })
+}
+
+if (TEMPO_DETAILS != '') {
+  renderPlot({
+    if ( input$team.id != "" ) {
+      user.detail <- gen.user.detail(aggregated.data, input$team.id)
+      tempo.unbillable <- tempo.unbillable.plot(user.detail)
+      plot(tempo.unbillable)
+    }
+  })
+}
 ```

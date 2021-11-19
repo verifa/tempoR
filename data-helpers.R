@@ -1,6 +1,9 @@
 # A set of generic functions that operate on the "aggregated" data
 # to produce data formatted for the plots
 
+# get workingdays
+source("arbetsdag.R")
+
 gen.user.data <- function(data, id) {
   user.data <- subset(data, team == id) %>%
     group_by(date, user, key) %>%
@@ -58,7 +61,7 @@ gen.team.summary <- function(summary) {
   return(team.summary)
 }
 
-gen.user.delta <- function(data, id) {
+gen.user.delta <- function(data, id, daily.hours, api.key) {
   user.delta <- subset(data, team == id) %>%
     group_by(user) %>%
     summarise(
@@ -68,8 +71,8 @@ gen.user.delta <- function(data, id) {
       billable = sum(billable)
     )
   
-  if (! is.null(working.hours)) {
-    user.delta <- merge(user.delta, working.hours, by = "user")
+  if (! is.null(daily.hours)) {
+    user.delta <- merge(user.delta, daily.hours, by = "user")
   } else {
     if (TEMPO_DAILY == '') {
       TEMPO_DAILY = 8
@@ -83,7 +86,7 @@ gen.user.delta <- function(data, id) {
   user.delta <- user.delta %>%
     group_by(user) %>%
     mutate(
-      expected = daily * workingdays(start, end), 
+      expected = daily * workingdays(start, end, api.key), 
       delta = hours - expected,
       fraction = 100 * billable / expected
     )
