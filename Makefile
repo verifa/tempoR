@@ -4,6 +4,9 @@ ORGANISATION ?= verifa
 
 default: tempo.html
 
+.PHONY: shiny-server
+shiny-server:
+	cd $@ && docker build -t $(ORGANISATION)/$@ .
 
 .PHONY: rbase-metrics
 rbase-metrics:

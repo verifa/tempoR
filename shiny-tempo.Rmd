@@ -43,7 +43,7 @@ check.if.empty(WD_KEY, "WD_KEY")
 
 where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo. WD_KEY is the api key for "arbetsdagar.se", you will have to register, at least, a free account to use the service.
 
-```{r libraries, echo = FALSE, warning = TRUE, message = TRUE}
+```{r libraries, echo = FALSE, warning = FALSE, message = FALSE}
 
 packages <- c("tidyverse", "jsonlite", "httr", "stringr", "slider", "lubridate")
 check.packages(packages)
@@ -190,11 +190,11 @@ inputPanel(
 )
 ```
 
-```{r echo = FALSE}
+```{r echo = FALSE, context = "server"}
 
 renderTable({
  if ( input$team.id != "" ) {
-   user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY)
+   user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY, TEMPO_DAILY)
   } 
 })
 

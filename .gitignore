@@ -5,6 +5,7 @@
 
 *.html
 !shiny/shinyapps/index.html
+shiny/shinyapps/*
 
 # config files from another repo in config
 /config/
