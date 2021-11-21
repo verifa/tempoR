@@ -61,7 +61,7 @@ gen.team.summary <- function(summary) {
   return(team.summary)
 }
 
-gen.user.delta <- function(data, id, daily.hours, api.key) {
+gen.user.delta <- function(data, id, daily.hours, api.key, daily='') {
   user.delta <- subset(data, team == id) %>%
     group_by(user) %>%
     summarise(
@@ -74,13 +74,13 @@ gen.user.delta <- function(data, id, daily.hours, api.key) {
   if (! is.null(daily.hours)) {
     user.delta <- merge(user.delta, daily.hours, by = "user")
   } else {
-    if (TEMPO_DAILY == '') {
-      TEMPO_DAILY = 8
+    if (daily == '') {
+      daily <- 8
     }
     user.delta <- user.delta %>%
       group_by(user) %>%
       mutate(
-        daily = as.numeric(TEMPO_DAILY)
+        daily = as.numeric(daily)
       )
   }
   user.delta <- user.delta %>%
