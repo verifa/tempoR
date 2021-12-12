@@ -26,7 +26,3 @@ shiny-server: shiny-base shiny-docker/Dockerfile Makefile $(SHINY_FILES) $(INDEX
 	cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.
 	cd shiny-docker && docker build --build-arg TEMPO_RENVIRON=Renviron --no-cache -t $(ORGANISATION)/$@ .
 	touch $@
-
-.PHONY: rbase-metrics
-rbase-metrics:
-	cd $@ && docker build -t $(ORGANISATION)/$@ .
