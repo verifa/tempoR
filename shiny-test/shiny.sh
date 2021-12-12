@@ -1,23 +1,12 @@
 #!/bin/sh -e
 
 pushd $(dirname ${0})
-TEMPO_DOCS="tempo.html"
 SHINY_DOCS="shiny-tempo.Rmd r-helpers.R data-helpers.R ggplot-helpers.R arbetsdag.R"
 SHINY_INDEX="shiny-index.html"
-
-if [ ! -f "../tempo.html" ]; then
-  pushd ..
-  make
-  popd
-fi
 
 pushd ..
 make shiny-base
 popd
-
-for doc in ${TEMPO_DOCS}; do
-  cp ../${doc} shinyapps/.
-done
 
 for doc in ${SHINY_DOCS}; do
   mkdir -p shinyapps/shiny
