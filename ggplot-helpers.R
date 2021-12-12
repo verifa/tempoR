@@ -48,50 +48,6 @@ tempo.detailed.plot <- function(data, id) {
   return(plot)
 }
 
-tempo.billable.plot <- function(data) {
-  # returns a scatter plot of the billable tasks
-  # 
-  # data is user.detail
-  #
-  plot <- ggplot(data = subset(data, billable > 0)) +
-    geom_point(aes(x = reorder(issue.key, -hours),
-                   y = hours,
-                   color = issue.key,
-                   fill = issue.key), show.legend = FALSE) +
-    facet_wrap(~user) + scale_fill_hue(l = 45) +
-    scale_x_discrete(name = NULL) +
-    scale_y_log10(
-      name = "Logged hours [h]",
-      sec.axis = dup_axis()) +
-    theme(legend.position = "top",
-          legend.title = element_blank(),
-          axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
-    ggtitle("Billable tasks")
-  
-  return(plot)
-}
-
-tempo.unbillable.plot <- function(data) {
-  # returns a detailed scatter plot for the unbillable tasks
-  #
-  # 
-  plot <- ggplot(data = subset(data, billable == 0)) +
-    geom_point(aes(x = reorder(issue.key, -hours),
-                   y = hours,
-                   color = issue.key,
-                   fill = issue.key), show.legend = FALSE) +
-    facet_wrap(~user) + scale_fill_hue(l = 45) +
-    scale_x_discrete(name = NULL) +
-    scale_y_log10(
-      name = "Logged hours [h]",
-      sec.axis = dup_axis()) +
-    theme(legend.position = "top",
-          axis.text.x = element_text(size = 6, angle = 45, hjust = 1)) +
-    ggtitle("Unbillable tasks")
-  
-  return(plot)
-}
-
 team.plot <- function(data) {
   plot <- ggplot(data = data) +
     geom_point(aes(x = date, y = average.7.hours), color = "Gray50", shape = 1) +

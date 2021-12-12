@@ -24,6 +24,18 @@ gen.user.detail <- function(data, id) {
   return(user.detail)
 }
 
+gen.key.data <- function(data, id) {
+  key.data <- subset(data, team == id) %>%
+    group_by(issue.key) %>%
+    summarise(
+      hours = sum(hours),
+      billable = sum(billable)
+    ) %>%
+    arrange(desc(billable), desc(hours))
+  
+  return(key.data)
+}
+
 gen.user.summary <- function(data, id) {
   user.summary <- subset(data, team == id) %>%
     group_by(date, user) %>%

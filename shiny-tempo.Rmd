@@ -190,13 +190,13 @@ inputPanel(
 )
 ```
 
-```{r echo = FALSE, context = "server"}
+```{r echo = FALSE, context = "server", results = 'asis'}
 
 renderTable({
  if ( input$team.id != "" ) {
    user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY, TEMPO_DAILY)
   } 
-})
+}, striped = TRUE)
 
 renderPlot({
   if ( input$team.id != "" ) {
@@ -242,22 +242,17 @@ renderPlot({
 })
 
 if (TEMPO_DETAILS != '') {
-  renderPlot({
-    if ( input$team.id != "" ) {
-      user.detail <- gen.user.detail(aggregated.data, input$team.id)
-      tempo.billable <- tempo.billable.plot(user.detail)
-      plot(tempo.billable)
-    }
-  })
+      cat("Worked hours by tempo key\n\nAdded as a way to check if keys reported on have correct \"billable\" configuration in Tempo.")
 }
 
 if (TEMPO_DETAILS != '') {
-  renderPlot({
+  renderTable({
     if ( input$team.id != "" ) {
-      user.detail <- gen.user.detail(aggregated.data, input$team.id)
-      tempo.unbillable <- tempo.unbillable.plot(user.detail)
-      plot(tempo.unbillable)
+      key.data <- gen.key.data(aggregated.data, input$team.id)
     }
-  })
+  },
+  striped = TRUE,
+  hover = TRUE,
+  bordered = TRUE)
 }
 ```
