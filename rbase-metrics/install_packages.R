@@ -1,8 +1,0 @@
-install.packages("tidyverse")
-install.packages("dplyr")
-install.packages("httr")
-install.packages("jsonlite")
-install.packages("stringr")
-install.packages("slider")
-install.packages("lubridate")
-install.packages("rmarkdown")
