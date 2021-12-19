@@ -33,8 +33,9 @@ Then there are a couple of variables that is possible to use to control what is 
 TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
 # No checking for this, can be set this way, or through a config/workinghours.csv file
 # TEMPO_DAILY is the needed working ours per day, assuming a 5 day work week
-TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
+RSTUDIO <- Sys.getenv("RSTUDIO")
 # No checking for this, used to filter how much details are plotted
+# This is set when running inside Rstudio, and is used to hide output that is used only during development
 ```
 
 When you run the document, a dropdown menu is presented, where the teams with readable data are selectable for viewing.

@@ -32,8 +32,8 @@ tempo.detailed.plot <- function(data, id) {
   # data is the aggregated data for all teams
   # id is the team.id for one team
   #
-  plot <- ggplot(data = subset(data, team == id)) +
-    geom_col(aes(x = date, y = hours, fill = issue.key), show.legend = FALSE) +
+  plot <- ggplot(data = subset(subset(data, team == id), date > Sys.Date() - 15)) +
+    geom_col(aes(x = date, y = hours, fill = issue.key), show.legend = TRUE) +
     facet_wrap(~user) + scale_fill_hue(l = 45) +
     scale_y_continuous(
       breaks = c(0,2,4,6,8,10),
