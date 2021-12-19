@@ -33,8 +33,9 @@ check.if.empty(TEMPO_START, "TEMPO_START")
 TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
 # No checking for this, can be set this way, or through a config/workinghours.csv file
 # TEMPO_DAILY is the needed working ours per day, assuming a 5 day work week
-TEMPO_DETAILS <- Sys.getenv("TEMPO_DETAILS")
+RSTUDIO <- Sys.getenv("RSTUDIO")
 # No checking for this, used to filter how much details are plotted
+# This is set when running inside Rstudio, and is used to hide output that is used only during development
 TEMPO_TEAM <- Sys.getenv("TEMPO_TEAM")
 # No check, does not have to be set
 WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
@@ -192,6 +193,12 @@ inputPanel(
 
 ```{r echo = FALSE, context = "server", results = 'asis'}
 
+renderText({
+  if ( input$team.id != "") {
+    paste("Team: ", subset(team.data, id == input$team.id)$name)
+  }
+})
+
 renderTable({
  if ( input$team.id != "" ) {
    user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY, TEMPO_DAILY)
@@ -215,17 +222,15 @@ renderPlot({
   }
 })
 
-if (TEMPO_DETAILS != '') {
-  renderPlot({
-    if ( input$team.id != "" ) {
-      user.summary <- gen.user.summary(aggregated.data, input$team.id)
-      rolling <- rolling.plot(user.summary)    
-      plot(rolling)
-    }
-  })
-}
+renderPlot({
+  if ( input$team.id != "" ) {
+    user.summary <- gen.user.summary(aggregated.data, input$team.id)
+    rolling <- rolling.plot(user.summary)    
+    plot(rolling)
+  }
+})
 
-if (TEMPO_DETAILS != '') {
+if (RSTUDIO != '') {
   renderPlot({
     if ( input$team.id != "" ) {
       tempo <- tempo.daily.plot(aggregated.data, input$team.id)
@@ -241,11 +246,8 @@ renderPlot({
   }
 })
 
-if (TEMPO_DETAILS != '') {
-      cat("Worked hours by tempo key\n\nAdded as a way to check if keys reported on have correct \"billable\" configuration in Tempo.")
-}
-
-if (TEMPO_DETAILS != '') {
+if (RSTUDIO != '') {
+  cat(HTML("<h3>Worked hours by tempo key</h3><br>Added as a way to check if keys reported on have correct \"billable\" configuration in Tempo."))
   renderTable({
     if ( input$team.id != "" ) {
       key.data <- gen.key.data(aggregated.data, input$team.id)
@@ -255,4 +257,6 @@ if (TEMPO_DETAILS != '') {
   hover = TRUE,
   bordered = TRUE)
 }
+
+
 ```
