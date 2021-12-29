@@ -55,7 +55,9 @@ shiny-server: shiny-base shiny-docker/Dockerfile Makefile $(SHINY_FILES) $(INDEX
 	mkdir -p shiny-docker/shinyapps/shiny
 	cp $(SHINY_FILES) shiny-docker/shinyapps/shiny/.
 	mkdir -p shiny-docker/shinyapps/shiny/config
-	cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.
+	if [ -n "$(CONFIG_FILES)" ]; then \
+	  cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.; \
+	fi
 	cd shiny-docker && docker build --build-arg TEMPO_RENVIRON=Renviron --no-cache -t $(ORGANISATION)/$@ .
 	touch $@
 
@@ -68,7 +70,9 @@ shiny-test: shiny-base
 	mkdir -p shiny-apps/shiny
 	cp $(SHINY_FILES) shiny-apps/shiny/.
 	mkdir -p shiny-apps/shiny/config
-	cp $(CONFIG_FILES) shiny-apps/shiny/config/.
+	if [ -n "$(CONFIG_FILES)" ]; then \
+	  cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.; \
+	fi
 	docker run --rm -p 3838:3838 \
     -v ${PWD}/shiny-apps/:/srv/shiny-server/ \
     -v ${HOME}/.Renviron:/home/shiny/.Renviron \
