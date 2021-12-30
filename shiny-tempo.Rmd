@@ -110,8 +110,9 @@ fetch.tempo.data <- function(key, begins, ends, team = 0) {
 
 ```
 
-```{r working-hours, echo = FALSE}
-workinghours <- function(file = "config/workinghours.csv") {
+```{r read-csv-file, echo = FALSE}
+read.csv.file <- function(file) {
+  stopifnot(file != "")
   result <- c()
   
   if (file.exists(file)) {
@@ -127,7 +128,9 @@ workinghours <- function(file = "config/workinghours.csv") {
 
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
 
-working.hours <- workinghours()
+working.hours <- read.csv.file(file = "config/workinghours.csv")
+
+testcsv <- read.csv.file()
 
 team.data <- fetch.tempo.teams(TEMPO_URL, TEMPO_KEY)
 team.data <- subset(team.data, select = c(id, name))
