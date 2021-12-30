@@ -18,7 +18,6 @@ When you click the **Knit** button to generate the document.
 ```{r functions, echo = FALSE}
 
 source("r-helpers.R")
-
 ```
 
 ### Environment variables
@@ -65,11 +64,13 @@ fetch.tempo <- function(url, query, key) {
   url <- paste0(url, query)
   header <- paste0("Bearer ", key)
   message(url)
-  httpResponse <- GET(url,
-                      add_headers("Authorization" = header),
-                      accept_json(),
-                      timeout(20))
-  
+  httpResponse <- GET(
+    url,
+    add_headers("Authorization" = header),
+    accept_json(),
+    timeout(20)
+  )
+
   return(fromJSON(content(httpResponse, "text")))
 }
 
@@ -84,60 +85,59 @@ fetch.tempo.data <- function(key, begins, ends, team = 0) {
   offset <- 0
   count <- 100
   TEMPO_LIMIT <- count
-  
+
   while (count == TEMPO_LIMIT) {
     TEAM_QUERY <- "worklogs"
     if (team != 0) {
-      TEAM_QUERY <- paste0(TEAM_QUERY,"/team/", team)
+      TEAM_QUERY <- paste0(TEAM_QUERY, "/team/", team)
     }
-    TEMPO_QUERY <- paste0(TEAM_QUERY,
-                          "?from=", begins,
-                          "&to=", ends,
-                          "&offset=", offset,
-                          "&limit=", TEMPO_LIMIT)
+    TEMPO_QUERY <- paste0(
+      TEAM_QUERY,
+      "?from=", begins,
+      "&to=", ends,
+      "&offset=", offset,
+      "&limit=", TEMPO_LIMIT
+    )
     results <- fetch.tempo(TEMPO_URL, TEMPO_QUERY, key)
     count <- results$metadata$count
     if (offset == 0) {
       data <- results$results
     } else {
       data <- bind_rows(data, results$results)
-      
     }
     offset <- offset + TEMPO_LIMIT
   }
   return(data)
 }
-
 ```
 
 ```{r read-csv-file, echo = FALSE}
 read.csv.file <- function(file) {
   stopifnot(file != "")
   result <- c()
-  
+
   if (file.exists(file)) {
     result <- read.csv(file)
   } else {
     print(paste("No such file:", file))
   }
-  
+
   return(result)
 }
-
 ```
 
 ```{r aggregate-data, echo = FALSE, warning = FALSE, message = FALSE}
 
 working.hours <- read.csv.file(file = "config/workinghours.csv")
 
-testcsv <- read.csv.file()
-
 team.data <- fetch.tempo.teams(TEMPO_URL, TEMPO_KEY)
 team.data <- subset(team.data, select = c(id, name))
-knitr::kable(team.data, caption = "Teams",
-             col.names = capwords(names(team.data)))
+knitr::kable(team.data,
+  caption = "Teams",
+  col.names = capwords(names(team.data))
+)
 
-if (TEMPO_TEAM != '') {
+if (TEMPO_TEAM != "") {
   teams <- c(TEMPO_TEAM)
 } else {
   teams <- team.data$id
@@ -149,14 +149,13 @@ for (team in teams) {
   tempo.data <- fetch.tempo.data(TEMPO_KEY, TEMPO_START, Sys.Date(), team)
 
   aggregated.team.data <- tibble()
-  
+
   if (length(tempo.data) > 0) {
-    
     aggregated.team.data <- tempo.data %>%
       mutate(
         user = author$displayName,
-        hours = timeSpentSeconds/(60*60),
-        billable = billableSeconds/(60*60),
+        hours = timeSpentSeconds / (60 * 60),
+        billable = billableSeconds / (60 * 60),
         date = as.Date(startDate),
         key = str_replace(issue$key, "-.*", ""),
         issue.key = issue$key,
@@ -166,20 +165,19 @@ for (team in teams) {
   }
 }
 
-if ( ! length(aggregated.data) > 0) {
+if (!length(aggregated.data) > 0) {
   stop("Could not fetch any data")
 }
-
 ```
 
 ```{r data-generators, echo = FALSE}
-# 
-source("data-helpers.R")     
+#
+source("data-helpers.R")
 ```
 
 ```{r ggplot-helpers, echo = FALSE}
-# 
-source("ggplot-helpers.R")     
+#
+source("ggplot-helpers.R")
 ```
 
 ```{r, echo = FALSE, warning = FALSE, message = FALSE, results = "asis"}
@@ -197,27 +195,30 @@ inputPanel(
 ```{r echo = FALSE, context = "server", results = 'asis'}
 
 renderText({
-  if ( input$team.id != "") {
+  if (input$team.id != "") {
     paste("Team: ", subset(team.data, id == input$team.id)$name)
   }
 })
 
-renderTable({
- if ( input$team.id != "" ) {
-   user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY, TEMPO_DAILY)
-  } 
-}, striped = TRUE)
+renderTable(
+  {
+    if (input$team.id != "") {
+      user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY, TEMPO_DAILY)
+    }
+  },
+  striped = TRUE
+)
 
 renderPlot({
-  if ( input$team.id != "" ) {
-   user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY)
+  if (input$team.id != "") {
+    user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY)
     accumulated <- accumulated.plot(user.delta)
     plot(accumulated)
   }
 })
 
 renderPlot({
-  if ( input$team.id != "" ) {
+  if (input$team.id != "") {
     user.summary <- gen.user.summary(aggregated.data, input$team.id)
     team.summary <- gen.team.summary(user.summary)
     team <- team.plot(team.summary)
@@ -226,16 +227,16 @@ renderPlot({
 })
 
 renderPlot({
-  if ( input$team.id != "" ) {
+  if (input$team.id != "") {
     user.summary <- gen.user.summary(aggregated.data, input$team.id)
-    rolling <- rolling.plot(user.summary)    
+    rolling <- rolling.plot(user.summary)
     plot(rolling)
   }
 })
 
-if (RSTUDIO != '') {
+if (RSTUDIO != "") {
   renderPlot({
-    if ( input$team.id != "" ) {
+    if (input$team.id != "") {
       tempo <- tempo.daily.plot(aggregated.data, input$team.id)
       plot(tempo)
     }
@@ -243,23 +244,23 @@ if (RSTUDIO != '') {
 }
 
 renderPlot({
-  if ( input$team.id != "" ) {
+  if (input$team.id != "") {
     tempo.detailed <- tempo.detailed.plot(aggregated.data, input$team.id)
     plot(tempo.detailed)
   }
 })
 
-if (RSTUDIO != '') {
+if (RSTUDIO != "") {
   cat(HTML("<h3>Worked hours by tempo key</h3><br>Added as a way to check if keys reported on have correct \"billable\" configuration in Tempo."))
-  renderTable({
-    if ( input$team.id != "" ) {
-      key.data <- gen.key.data(aggregated.data, input$team.id)
-    }
-  },
-  striped = TRUE,
-  hover = TRUE,
-  bordered = TRUE)
+  renderTable(
+    {
+      if (input$team.id != "") {
+        key.data <- gen.key.data(aggregated.data, input$team.id)
+      }
+    },
+    striped = TRUE,
+    hover = TRUE,
+    bordered = TRUE
+  )
 }
-
-
 ```
