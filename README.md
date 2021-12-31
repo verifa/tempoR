@@ -65,7 +65,7 @@ There are two ways for running this in a docker based shiny server
 
 **Test and development:**
 
-In the `shiny-test`directory there is a script `shiny.sh` that uses the `shiny-base` base docker image, `make shiny-base`, and mounts the files need to run the document. This intended as a way test that the base image has the needed R packages and as a way to check that the running document looks as intended. For this the `.Renviron` file in `${HOME}`is used by default.
+The `shiny-test` target in the `Makefile` will copy the content files to the shiny-apps directory, and run the shiny-base image with the files mounted from there. This is intended as a way to test that the base image has the needed R packages and as a way to check that the running document looks as intended. For this the `.Renviron` file in `${HOME}`is used by default.
 
 **For publication:**
 
