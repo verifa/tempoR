@@ -3,6 +3,7 @@
 .RData
 .Ruserdata
 
+shiny-apps
 shiny-base
 shiny-server
 Renviron

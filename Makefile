@@ -26,3 +26,18 @@ shiny-server: shiny-base shiny-docker/Dockerfile Makefile $(SHINY_FILES) $(INDEX
 	cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.
 	cd shiny-docker && docker build --build-arg TEMPO_RENVIRON=Renviron --no-cache -t $(ORGANISATION)/$@ .
 	touch $@
+
+
+.PHONY: shiny-test
+shiny-test: shiny-base 
+	mkdir -p shiny-apps
+	cp $(INDEX_FILE) shiny-apps/index.html
+	mkdir -p shiny-apps/shiny
+	cp $(SHINY_FILES) shiny-apps/shiny/.
+	mkdir -p shiny-apps/shiny/config
+	cp $(CONFIG_FILES) shiny-apps/shiny/config/.
+	docker run --rm -p 3838:3838 \
+    -v ${PWD}/shiny-apps/:/srv/shiny-server/ \
+    -v ${HOME}/.Renviron:/home/shiny/.Renviron \
+    -u shiny \
+    $(ORGANISATION)/shiny-base
