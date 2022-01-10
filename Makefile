@@ -27,6 +27,11 @@ default: shiny-server
 help : Makefile
 	@sed -n 's/^##//p' $<
 
+## clean         : removes the proxy files, shiny-base and shiny-server
+.PHONY: clean
+clean:
+	@rm -f shiny-base shiny-server
+
 ## shiny-base    : builds a docker image w the necessary R packages
 shiny-base: shiny-docker/Dockerbase shiny-docker/install_packages.R Makefile
 	cd shiny-docker && docker build -f Dockerbase -t $(ORGANISATION)/$@ .
