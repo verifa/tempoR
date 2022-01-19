@@ -2,7 +2,9 @@
 title: "tempo report"
 author: "`r Sys.getenv('USER')`"
 date: "`r Sys.Date()`"
-output: html_document
+output:
+  flexdashboard::flex_dashboard:
+    orientation: rows
 runtime: shiny
 ---
 
@@ -11,20 +13,19 @@ knitr::opts_chunk$set(echo = TRUE)
 ```
 
 
-This is an R Markdown document. For more details on using R Markdown see <http://rmarkdown.rstudio.com>.
-
-When you click the **Knit** button to generate the document.
-
 ```{r functions, echo = FALSE}
-
 source("r-helpers.R")
 ```
 
-### Environment variables
 
-For this to work, these needs to be set in **$HOME/.Renviron**
+Inputs {.sidebar}
+--------------------------------------------------
 
-```{r environment, echo = TRUE}
+[Rmarkdown](http://rmarkdown.rstudio.com)
+
+
+```{r environment, echo = FALSE}
+# For this to work, these needs to be set in **$HOME/.Renviron**
 TEMPO_KEY <- Sys.getenv("TEMPO_KEY")
 check.if.empty(TEMPO_KEY, "TEMPO_KEY")
 TEMPO_START <- Sys.getenv("TEMPO_START")
@@ -32,16 +33,11 @@ check.if.empty(TEMPO_START, "TEMPO_START")
 TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
 # No checking for this, can be set this way, or through a config/workinghours.csv file
 # TEMPO_DAILY is the needed working ours per day, assuming a 5 day work week
-RSTUDIO <- Sys.getenv("RSTUDIO")
-# No checking for this, used to filter how much details are plotted
-# This is set when running inside Rstudio, and is used to hide output that is used only during development
 TEMPO_TEAM <- Sys.getenv("TEMPO_TEAM")
 # No check, does not have to be set
 WD_KEY <- Sys.getenv("ARBETSDAGAR_KEY")
 check.if.empty(WD_KEY, "WD_KEY")
 ```
-
-where TEMPO_KEY is the api key and TEMPO_START is the date you started using tempo. WD_KEY is the api key for "arbetsdagar.se", you will have to register, at least, a free account to use the service.
 
 ```{r libraries, echo = FALSE, warning = FALSE, message = FALSE}
 
@@ -185,6 +181,8 @@ source("ggplot-helpers.R")
 teams.with.data <- levels(factor(aggregated.data$team))
 ```
 
+Select a Team with data from the list
+
 ```{r input, echo = FALSE}
 library(shiny)
 inputPanel(
@@ -192,13 +190,23 @@ inputPanel(
 )
 ```
 
-```{r echo = FALSE, context = "server", results = 'asis'}
+Vis {.tabset}
+--------------------------------------------------
 
-renderText({
-  if (input$team.id != "") {
-    paste("Team: ", subset(team.data, id == input$team.id)$name)
-  }
-})
+
+<!--Visualizations {data-icon="fa-signal"}
+===================================== 
+-->
+
+### User Delta
+
+```{r echo = FALSE, context = "server", results = "asis"}
+
+# renderText({
+#   if (input$team.id != "") {
+#     paste("\nTeam: ", subset(team.data, id == input$team.id)$name)
+#   }
+# })
 
 renderTable(
   {
@@ -208,7 +216,11 @@ renderTable(
   },
   striped = TRUE
 )
+```
 
+### Accumulated
+
+```{r echo = FALSE, context = "server", results = "asis"}
 renderPlot({
   if (input$team.id != "") {
     user.delta <- gen.user.delta(aggregated.data, input$team.id, working.hours, WD_KEY)
@@ -216,6 +228,12 @@ renderPlot({
     plot(accumulated)
   }
 })
+
+```
+
+### Team Summary
+
+```{r echo = FALSE, context = "server", results = "asis"}
 
 renderPlot({
   if (input$team.id != "") {
@@ -226,6 +244,11 @@ renderPlot({
   }
 })
 
+```
+
+### User Summary
+
+```{r echo = FALSE, context = "server", results = "asis"}
 renderPlot({
   if (input$team.id != "") {
     user.summary <- gen.user.summary(aggregated.data, input$team.id)
@@ -234,15 +257,23 @@ renderPlot({
   }
 })
 
-if (RSTUDIO != "") {
-  renderPlot({
-    if (input$team.id != "") {
-      tempo <- tempo.daily.plot(aggregated.data, input$team.id)
-      plot(tempo)
-    }
-  })
-}
+```
 
+### Daily Plot
+
+```{r echo = FALSE, context = "server", results = "asis"}
+renderPlot({
+  if (input$team.id != "") {
+    tempo <- tempo.daily.plot(aggregated.data, input$team.id)
+    plot(tempo)
+  }
+})
+
+```
+
+### Last 2 weeks
+
+```{r echo = FALSE, context = "server", results = "asis"}
 renderPlot({
   if (input$team.id != "") {
     tempo.detailed <- tempo.detailed.plot(aggregated.data, input$team.id)
@@ -250,17 +281,24 @@ renderPlot({
   }
 })
 
-if (RSTUDIO != "") {
-  cat(HTML("<h3>Worked hours by tempo key</h3><br>Added as a way to check if keys reported on have correct \"billable\" configuration in Tempo."))
-  renderTable(
-    {
-      if (input$team.id != "") {
-        key.data <- gen.key.data(aggregated.data, input$team.id)
-      }
-    },
-    striped = TRUE,
-    hover = TRUE,
-    bordered = TRUE
-  )
-}
+```
+
+### Issue key hours
+
+#### Worked hours by tempo key
+
+Added as a way to check if keys reported on have correct \"billable\" configuration in Tempo.
+
+```{r echo = FALSE, context = "server", results = "asis"}
+
+renderTable(
+  {
+    if (input$team.id != "") {
+      key.data <- gen.key.data(aggregated.data, input$team.id)
+    }
+  },
+  striped = TRUE,
+  hover = TRUE,
+  bordered = TRUE
+)
 ```
