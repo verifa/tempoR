@@ -72,7 +72,7 @@ There is a possibility to generate a docker image based on the `shiny-base`image
 
 builds the image, and you can the run that anywhere where docker is available, e.g.
 
-`docker run --rm -p 3838:3838 -u shiny verifa/shiny-server`
+`docker run --rm -p 3838:3838 verifa/shiny-server`
 
 For the latter option there is an optional environment variable, `TEMPO_RENVIRON`, that can be set to any file that is wanted as `/home/shiny/.Renviron` in the running container
 
