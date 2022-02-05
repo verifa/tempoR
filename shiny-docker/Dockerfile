@@ -6,4 +6,5 @@ COPY ${TEMPO_RENVIRON} /home/shiny/.Renviron
 
 COPY shinyapps /srv/shiny-server/.
 
-#RUN 
+USER shiny
+ 
