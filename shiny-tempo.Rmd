@@ -194,19 +194,10 @@ Vis {.tabset}
 --------------------------------------------------
 
 
-<!--Visualizations {data-icon="fa-signal"}
-===================================== 
--->
 
 ### User Delta
 
 ```{r echo = FALSE, context = "server", results = "asis"}
-
-# renderText({
-#   if (input$team.id != "") {
-#     paste("\nTeam: ", subset(team.data, id == input$team.id)$name)
-#   }
-# })
 
 renderTable(
   {
