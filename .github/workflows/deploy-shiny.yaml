@@ -23,6 +23,27 @@ jobs:
         echo ARBETSDAGAR_KEY=${{ secrets.ARBETSDAGAR_KEY }} >> $HOME/.Renviron
         make shiny-server
         docker image ls
+    - name: deploy
+    # Setup gcloud CLI
+      - uses: google-github-actions/setup-gcloud@master
+        with:
+          service_account_key: ${{ secrets.GCP_JSON_KEY }}
+          project_id: verifa-metrics
+          export_default_credentials: true
+      # Configure docker to use the gcloud command-line tool as a credential helper
+      - run: |
+          gcloud auth configure-docker europe-north1-docker.pkg.dev -q
+      # Build docker image
+      - name: Build
+        run: |-
+          docker build -t ${DOCKER_REPO}/bubbly:${GITHUB_SHA} .
+          # Tag as latest as well
+          docker tag ${DOCKER_REPO}/bubbly:$GITHUB_SHA ${DOCKER_REPO}/bubbly:latest
+      - name: Push
+        run: |-
+          docker push ${DOCKER_REPO}/bubbly:$GITHUB_SHA
+          docker push ${DOCKER_REPO}/bubbly:latest
+
 ### Run actions to publish the image 
 #    - uses: browser-actions/setup-chrome@latest
 #      if: steps.diffcheck.outputs.OUTPUT == 1
