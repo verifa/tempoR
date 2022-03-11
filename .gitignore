@@ -3,16 +3,8 @@
 .RData
 .Ruserdata
 
-shiny-apps
-shiny-base
-shiny-server
-Renviron
-shiny-docker/shinyapps
-
-*.html
-!shiny-index.html
-shiny/shinyapps/*
+.Renviron
 
 # config files from another repo in config
-/config/
-
+config/
+shiny/config/

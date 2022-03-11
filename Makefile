@@ -1,15 +1,20 @@
 ##
-##    tempoR Makefile
-##    ###############
+##	tempoR Makefile
+##	###############
 ##
 ## Builds 2 different docker images for the tempo data shiny-base and shiny-server
 ## 
-## shiny-base:   is a shiny server instance adding the R packages needed for tempo
-## shiny-server: adds the tempo R files to the shiny-base image for a selfcontained image
+## build-base:   is a shiny server instance adding the R packages needed for tempo
+## build: adds the tempo R files to the shiny-base image for a selfcontained image
 ##
-## shiny-test:   is a test target that mounts the R files to the shiny-base image for testing
+## dev:   is a dev mode that mounts the R files to the shiny-base image for testing
 ##
-ORGANISATION ?= verifa
+REPO := europe-north1-docker.pkg.dev/verifa-metrics/tempo
+TAG := $(shell git describe --tags --always --dirty=-dev)
+IMAGE := $(REPO)/tempo-dashboard
+
+# Hardcoded because we don't push this anywhere
+BASE_IMAGE := verifa/shiny-base:test
 
 INDEX_FILE := shiny-index.html
 CONFIG_FILES := $(wildcard config/*.csv)
@@ -22,7 +27,7 @@ default: shiny-server
 ##
 ## Targets
 ##
-## help          : prints this help
+## help	         : prints this help
 .PHONY : help
 help : Makefile
 	@sed -n 's/^##//p' $<
@@ -32,10 +37,9 @@ help : Makefile
 clean:
 	@rm -f shiny-base shiny-server
 
-## shiny-base    : builds a docker image w the necessary R packages
-shiny-base: shiny-docker/Dockerbase shiny-docker/install_packages.R Makefile
-	cd shiny-docker && docker build -f Dockerbase -t $(ORGANISATION)/$@ .
-	touch $@
+## build-base    : builds a docker image w the necessary R packages
+build-base:
+	docker build --target base -t $(BASE_IMAGE) .
 
 ## shiny-files   : list the files added to the server
 .PHONY : shiny-files
@@ -44,37 +48,28 @@ shiny-files:
 	@echo "INDEX_FILE:   $(INDEX_FILE)"
 	@echo "CONFIG_FILES: $(CONFIG_FILES)"
 	@echo "SHINY_FILES:  $(SHINY_FILES)"
-	@echo ".Renviron:    $(TEMPO_RENVIRON)"
+	@echo ".Renviron:	$(TEMPO_RENVIRON)"
 
-## shiny-server  : builds a docker images for publication, 
-##               : that contains our shiny files and configuration files
-shiny-server: shiny-base shiny-docker/Dockerfile Makefile $(SHINY_FILES) $(INDEX_FILE) $(CONFIG_FILES)
-	cp $(TEMPO_RENVIRON) shiny-docker/Renviron
-	mkdir -p shiny-docker/shinyapps
-	cp $(INDEX_FILE) shiny-docker/shinyapps/index.html
-	mkdir -p shiny-docker/shinyapps/shiny
-	cp $(SHINY_FILES) shiny-docker/shinyapps/shiny/.
-	mkdir -p shiny-docker/shinyapps/shiny/config
-	if [ -n "$(CONFIG_FILES)" ]; then \
-	  cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.; \
+## build         : builds a docker images for publication that contains our
+##	             : shiny files and configuration files
+build:
+	# If .Renviron exists locally, use it, otherwise fetch from home directory
+	# or the file set by TEMPO_RENVIRON
+	if [ ! -f .Renviron ]; then \
+		cp $(TEMPO_RENVIRON) .Renviron; \
 	fi
-	cd shiny-docker && docker build --build-arg TEMPO_RENVIRON=Renviron --no-cache -t $(ORGANISATION)/$@ .
-	touch $@
+	docker build --build-arg TEMPO_RENVIRON=.Renviron -t $(IMAGE):$(TAG) .
 
-## shiny-test    : runs the shiny base image, 
-##               : with the R files mounted for testing
-.PHONY: shiny-test
-shiny-test: shiny-base 
-	mkdir -p shiny-apps
-	cp $(INDEX_FILE) shiny-apps/index.html
-	mkdir -p shiny-apps/shiny
-	cp $(SHINY_FILES) shiny-apps/shiny/.
-	mkdir -p shiny-apps/shiny/config
-	if [ -n "$(CONFIG_FILES)" ]; then \
-	  cp $(CONFIG_FILES) shiny-docker/shinyapps/shiny/config/.; \
-	fi
+push: build
+	docker push $(IMAGE):$(TAG)
+	docker tag $(IMAGE):$(TAG) $(IMAGE):latest
+	docker push $(IMAGE):latest
+
+## dev           : runs the base docker image and mounts local files for dev mode
+dev: build-base
 	docker run --rm -p 3838:3838 \
-    -v ${PWD}/shiny-apps/:/srv/shiny-server/ \
-    -v ${HOME}/.Renviron:/home/shiny/.Renviron \
-    -u shiny \
-    $(ORGANISATION)/shiny-base
+		-v ${PWD}/shiny/:/srv/shiny-server/ \
+		-v ${PWD}/.Renviron:/home/shiny/.Renviron \
+		-u shiny \
+		$(BASE_IMAGE)
+
