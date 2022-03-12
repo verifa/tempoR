@@ -16,10 +16,6 @@ IMAGE := $(REPO)/tempo-dashboard
 # Hardcoded because we don't push this anywhere
 BASE_IMAGE := verifa/shiny-base:test
 
-INDEX_FILE := shiny-index.html
-CONFIG_FILES := $(wildcard config/*.csv)
-SHINY_FILES := shiny-tempo.Rmd $(wildcard *.R)
-
 TEMPO_RENVIRON ?= $(HOME)/.Renviron
 
 default: shiny-server
@@ -27,31 +23,17 @@ default: shiny-server
 ##
 ## Targets
 ##
-## help	         : prints this help
+## help	       : prints this help
 .PHONY : help
 help : Makefile
 	@sed -n 's/^##//p' $<
-
-## clean         : removes the proxy files, shiny-base and shiny-server
-.PHONY: clean
-clean:
-	@rm -f shiny-base shiny-server
 
 ## build-base    : builds a docker image w the necessary R packages
 build-base:
 	docker build --target base -t $(BASE_IMAGE) .
 
-## shiny-files   : list the files added to the server
-.PHONY : shiny-files
-shiny-files:
-	@echo 
-	@echo "INDEX_FILE:   $(INDEX_FILE)"
-	@echo "CONFIG_FILES: $(CONFIG_FILES)"
-	@echo "SHINY_FILES:  $(SHINY_FILES)"
-	@echo ".Renviron:	$(TEMPO_RENVIRON)"
-
 ## build         : builds a docker images for publication that contains our
-##	             : shiny files and configuration files
+##	       : shiny files and configuration files
 build:
 	# If .Renviron exists locally, use it, otherwise fetch from home directory
 	# or the file set by TEMPO_RENVIRON
@@ -68,8 +50,12 @@ push: build
 ## dev           : runs the base docker image and mounts local files for dev mode
 dev: build-base
 	docker run --rm -p 3838:3838 \
-		-v ${PWD}/shiny/:/srv/shiny-server/ \
+		-v ${PWD}/index.html:/srv/shiny-server/index.html \
+		-v ${PWD}/shiny/:/srv/shiny-server/shiny/ \
 		-v ${PWD}/.Renviron:/home/shiny/.Renviron \
 		-u shiny \
 		$(BASE_IMAGE)
 
+## run           : runs the tempo-dashboard locally
+run: build
+	docker run --rm -p 3838:3838 $(IMAGE):$(TAG)

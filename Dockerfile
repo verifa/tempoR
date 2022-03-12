@@ -16,7 +16,7 @@ FROM base
 ARG TEMPO_RENVIRON
 COPY ${TEMPO_RENVIRON} /home/shiny/.Renviron
 
-WORKDIR /src/shiny-server
+WORKDIR /srv/shiny-server
 COPY . .
 
 ENV PORT 3838
