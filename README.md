@@ -38,7 +38,7 @@ TEMPO_DAILY <- Sys.getenv("TEMPO_DAILY")
 When you run the document, a dropdown menu is presented, where the teams with readable data are selectable for viewing.
 #### Configuration files
 
-Instead of using TEMPO_DAILY to set the working hours / working day, a csv file in the `config` folder can be used.
+Instead of using TEMPO_DAILY to set the working hours / working day, a csv file in the `shiny/config` folder can be used.
 
 The expected name is `workinghours.csv`, which is a simple csv file with 2 columns and one row per user, that will be used when comparing a users reported working hours with the expected amount of working hours.
 
@@ -54,7 +54,7 @@ This is to enable a separate private repository for sensitive information.
 
 ### Rstudio
 
-Open `tempoR.Rproj` in Rstudio and then open the `shiny-tempo.Rmd` file, then a *Run Document* button appears that is used to view the report in a pop-up window. Running the document this way uses the shiny server included in Rstudio.
+Open `tempoR.Rproj` in Rstudio and then open the `shiny/shiny-tempo.Rmd` file, then a *Run Document* button appears that is used to view the report in a pop-up window. Running the document this way uses the shiny server included in Rstudio.
 
 ### docker
 
@@ -62,19 +62,23 @@ There are two ways for running this in a docker based shiny server
 
 **Test and development:**
 
-The `shiny-test` target in the `Makefile` will copy the content files to the shiny-apps directory, and run the shiny-base image with the files mounted from there. This is intended as a way to test that the base image has the needed R packages and as a way to check that the running document looks as intended. For this the `.Renviron` file in `${HOME}`is used by default.
+The `dev` target in the `Makefile` will run the base image with the shiny files mounted. This is intended as a way to test that the base image has the needed R packages and as a way to check that the running document looks as intended. For this the `.Renviron` file in `${HOME}`is used by default.
 
+```
+	docker run --rm -p 3838:3838 \
+		-v ${PWD}/shiny/:/srv/shiny-server/ \
+		-v ${PWD}/.Renviron:/home/shiny/.Renviron \
+		-u shiny \
+		$(BASE_IMAGE)
+
+```
 **For publication:**
 
-There is a possibility to generate a docker image based on the `shiny-base`image, that contains all the needed files to act as a standalone shiny server.
+The `build` make target will build a docker image that contains the necessary file to run standalone.
 
-`make shiny-server``
+Then there is a `push` target in the Makefile that will push the image to the Artifact registry in google cloud.
 
-builds the image, and you can the run that anywhere where docker is available, e.g.
-
-`docker run --rm -p 3838:3838 verifa/shiny-server`
-
-For the latter option there is an optional environment variable, `TEMPO_RENVIRON`, that can be set to any file that is wanted as `/home/shiny/.Renviron` in the running container
+To run the `tempo-dashboard` locally there is a `run` target in the Makefile, which will use port 3838 on localhost. 
 
 ### Utility scripts
 
