@@ -10,15 +10,14 @@ jobs:
   ci:
     runs-on: ubuntu-latest
     steps:
-      - uses: actions/checkout@v2
-      - uses: actions/checkout@v2
+      - uses: actions/checkout@v3
+      - uses: actions/checkout@v3
         with:
           repository: verifa/tempo-config
-          path: ./config
+          path: ./shiny/config
           token: ${{ secrets.TUNABOAT_GITHUB_API }}
       - name: build
         run: |
-          cp -R ./config ./shiny/config
           echo TEMPO_KEY=${{ secrets.TEMPO_API }} >> .Renviron
           echo TEMPO_START=2021-01-01 >> .Renviron
           echo ARBETSDAGAR_KEY=${{ secrets.ARBETSDAGAR_KEY }} >> .Renviron
