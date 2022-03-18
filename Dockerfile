@@ -22,3 +22,5 @@ COPY . .
 ENV PORT 3838
 
 USER shiny
+
+CMD ["/usr/bin/shiny-server"]
