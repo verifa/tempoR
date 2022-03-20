@@ -2,7 +2,6 @@ name: generate-report-html
 
 on:
   push:
-    branches: [main]
   pull_request:
     branches: [main]
 
