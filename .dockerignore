@@ -1,6 +1,14 @@
+# hidden files
+.dockerignore
 .git
 .github
+.gitignore
+.Rhistory
+.Rproj.user
+# folders
 scripts
+# files
+Dockerfile
 LICENSE
 Makefile
 README.md
